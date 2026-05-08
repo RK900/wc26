@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { isFirebaseConfigured } from '@/lib/firebaseConfigured';
 import { listOwnedBrackets, type OwnedBracketEntry } from '@/lib/localStore';
 
@@ -20,20 +20,23 @@ export function Home() {
           no email — just a pool name, password, and a shareable link.
         </p>
         {configured ? (
-          <div className="flex flex-wrap justify-center gap-3">
-            <Link
-              to="/pool/new"
-              className="rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-bg hover:opacity-90"
-            >
-              Create a pool
-            </Link>
-            <Link
-              to="/preview"
-              className="rounded-md border border-border bg-surface-2 px-5 py-2.5 text-sm font-semibold hover:bg-surface-2/80"
-            >
-              Preview the bracket
-            </Link>
-          </div>
+          <>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Link
+                to="/pool/new"
+                className="rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-bg hover:opacity-90"
+              >
+                Create a pool
+              </Link>
+              <Link
+                to="/preview"
+                className="rounded-md border border-border bg-surface-2 px-5 py-2.5 text-sm font-semibold hover:bg-surface-2/80"
+              >
+                Preview the bracket
+              </Link>
+            </div>
+            <JoinExistingPool />
+          </>
         ) : (
           <div className="mx-auto max-w-md space-y-3">
             <div className="rounded-md border border-warn/40 bg-warn/10 px-4 py-3 text-left text-sm text-warn">
@@ -73,4 +76,57 @@ export function Home() {
       )}
     </div>
   );
+}
+
+function JoinExistingPool() {
+  const navigate = useNavigate();
+  const [input, setInput] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const onSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    const id = extractPoolId(input.trim());
+    if (!id) {
+      setError('Paste a join link or pool ID.');
+      return;
+    }
+    setError(null);
+    navigate(`/pool/${id}/join`);
+  };
+
+  return (
+    <form onSubmit={onSubmit} className="mx-auto mt-6 flex max-w-md flex-col gap-2 text-left">
+      <label className="text-xs font-medium uppercase tracking-wider text-muted">
+        Or join an existing pool
+      </label>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Paste join link or pool ID"
+          className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-sm focus:border-accent focus:outline-none"
+        />
+        <button
+          type="submit"
+          disabled={!input.trim()}
+          className="rounded-md border border-border bg-surface-2 px-4 py-2 text-sm font-semibold hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Go
+        </button>
+      </div>
+      {error && <p className="text-xs text-danger">{error}</p>}
+    </form>
+  );
+}
+
+// Accepts either a raw pool ID or a full URL like
+// "https://www.koodli.com/dleuworldcup/pool/abc123/join" or ".../pool/abc123".
+function extractPoolId(input: string): string | null {
+  if (!input) return null;
+  const match = input.match(/\/pool\/([^/?#]+)/);
+  if (match) return match[1];
+  // No URL path — accept as raw pool ID if it looks reasonable (no slashes/spaces).
+  if (/^[A-Za-z0-9_-]+$/.test(input)) return input;
+  return null;
 }

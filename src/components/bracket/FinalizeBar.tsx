@@ -23,7 +23,7 @@ export function FinalizeBar() {
           </div>
           <div className="text-xs text-muted">
             Groups {p.groupsCommitted}/12 · 3rd-place {p.thirdPlacePicks}/8 · Knockout{' '}
-            {p.knockoutPicks}/32
+            {p.knockoutPicks}/{p.knockoutTotal}
           </div>
         </div>
         <button

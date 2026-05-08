@@ -2,7 +2,7 @@
 
 export type TeamCode = string;
 export type GroupLetter = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L';
-export type Round = 'R32' | 'R16' | 'QF' | 'SF' | 'F';
+export type Round = 'R32' | 'R16' | 'QF' | 'SF' | '3rd' | 'F';
 export type MatchId = number;
 
 export interface Team {
@@ -20,7 +20,8 @@ export interface GroupDef {
 export type SlotSpec =
   | { kind: 'group'; group: GroupLetter; rank: 1 | 2 }
   | { kind: 'best3'; eligibleGroups: GroupLetter[]; slotIndex: number }
-  | { kind: 'winner'; matchId: MatchId };
+  | { kind: 'winner'; matchId: MatchId }
+  | { kind: 'loser'; matchId: MatchId };
 
 export interface MatchSpec {
   id: MatchId;

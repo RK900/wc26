@@ -110,5 +110,7 @@ function describeSlot(spec: SlotSpec): string {
       return `3rd of ${spec.eligibleGroups.join('/')}`;
     case 'winner':
       return `Winner of M${spec.matchId}`;
+    case 'loser':
+      return `Loser of M${spec.matchId}`;
   }
 }

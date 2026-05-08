@@ -1,4 +1,4 @@
-import { MATCHES } from '@/data/bracket';
+import { MATCHES, MATCHES_BY_ID } from '@/data/bracket';
 import type {
   BracketPicks,
   GroupLetter,
@@ -35,6 +35,18 @@ export function resolveSlot(
     }
     case 'winner': {
       return picks.knockout[spec.matchId]?.winner ?? null;
+    }
+    case 'loser': {
+      const sourceMatch = MATCHES_BY_ID[spec.matchId];
+      if (!sourceMatch) return null;
+      const sourceWinner = picks.knockout[spec.matchId]?.winner ?? null;
+      if (!sourceWinner) return null;
+      const sourceHome = resolveSlot(sourceMatch.home, picks, mapping);
+      const sourceAway = resolveSlot(sourceMatch.away, picks, mapping);
+      if (sourceWinner === sourceHome) return sourceAway;
+      if (sourceWinner === sourceAway) return sourceHome;
+      // Picked winner doesn't match either side (cascade about to clear it).
+      return null;
     }
   }
 }

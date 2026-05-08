@@ -27,6 +27,7 @@ export interface CompletionProgress {
   groupsOrdered: number;
   thirdPlacePicks: number;
   knockoutPicks: number;
+  knockoutTotal: number;
   done: number;
   total: number;
   isComplete: boolean;
@@ -51,19 +52,21 @@ export function progress(picks: BracketPicks): CompletionProgress {
     if (winner === home || winner === away) knockoutPicks++;
   }
 
-  const total = 12 + 8 + 32;
+  const knockoutTotal = MATCHES.length;
+  const total = 12 + 8 + knockoutTotal;
   const done = groupsCommitted + thirdPlacePicks + knockoutPicks;
   return {
     groupsCommitted,
     groupsOrdered,
     thirdPlacePicks,
     knockoutPicks,
+    knockoutTotal,
     done,
     total,
     isComplete:
       groupsCommitted === 12 &&
       groupsOrdered === 12 &&
       thirdPlacePicks === 8 &&
-      knockoutPicks === 32,
+      knockoutPicks === knockoutTotal,
   };
 }
