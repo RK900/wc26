@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pools — created by anyone authenticated; immutable after creation.
+    // The password is gated client-side: client only renders the join form
+    // if the user types a password matching the stored hash. The doc only
+    // contains the hash + salt + name, so reads don't leak the password.
+    match /pools/{poolId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasAll(['name', 'passwordHash', 'passwordSalt', 'createdAt'])
+                    && request.resource.data.name is string
+                    && request.resource.data.passwordHash is string
+                    && request.resource.data.passwordSalt is string;
+      allow update, delete: if false;
+
+      // Brackets — anyone authenticated reads. Writes must preserve the
+      // ownerTokenHash that was set on create. The client-side ALSO verifies
+      // the writer knows the plaintext token (re-hashes against the salt and
+      // compares) before mounting the editor; rules enforce that nobody can
+      // change the hash to lock out the original owner.
+      match /brackets/{bracketId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null
+                      && request.resource.data.keys().hasAll(['name', 'nickname', 'ownerTokenHash', 'ownerTokenSalt', 'picks', 'updatedAt']);
+        allow update: if request.auth != null
+                      && request.resource.data.ownerTokenHash == resource.data.ownerTokenHash
+                      && request.resource.data.ownerTokenSalt == resource.data.ownerTokenSalt
+                      && request.resource.data.name == resource.data.name
+                      && request.resource.data.nickname == resource.data.nickname;
+        allow delete: if false;
+      }
+    }
+  }
+}
