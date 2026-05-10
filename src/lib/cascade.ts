@@ -1,5 +1,4 @@
 import { MATCHES } from '@/data/bracket';
-import { isComplete } from '@/lib/completeness';
 import { resolveSlot } from '@/lib/resolveBracket';
 import { mapThirdPlaceAdvancers } from '@/lib/thirdPlaceMap';
 import type { BracketPicks } from '@/lib/types';
@@ -12,6 +11,10 @@ import type { BracketPicks } from '@/lib/types';
 // either resolved side, clear that winner. Downstream matches that depended on
 // it via {kind:'winner', matchId} will then resolve to null on this same pass,
 // triggering the same rule for them. Total, idempotent, O(32).
+//
+// finalizedAt is intentionally NOT cleared by the cascade — once submitted, the
+// bracket stays "submitted" and edits keep flowing in via auto-save until the
+// deadline. The submitted state is one-way (no re-submit).
 export function applyCascade(picks: BracketPicks): BracketPicks {
   const next = structuredClone(picks);
   const mapping = mapThirdPlaceAdvancers(next.thirdPlace.advancingGroups);
@@ -25,8 +28,5 @@ export function applyCascade(picks: BracketPicks): BracketPicks {
     }
   }
 
-  if (next.finalizedAt !== null && !isComplete(next)) {
-    next.finalizedAt = null;
-  }
   return next;
 }

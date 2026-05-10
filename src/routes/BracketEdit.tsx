@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ensureSignedIn, isFirebaseConfigured } from '@/lib/firebase';
 import { getBracket, updateBracketPicks, verifyBracketToken } from '@/lib/bracketApi';
 import { getPool } from '@/lib/poolApi';
+import { formatDeadline, isPastDeadline } from '@/lib/deadline';
 import { useBracketStore } from '@/store/bracketStore';
 import { BracketEditor } from '@/components/bracket/BracketEditor';
 import { BracketViewer } from '@/components/bracket/BracketViewer';
@@ -45,7 +46,8 @@ export function BracketEdit() {
         }
         setPool(p);
         setBracket(b);
-        const canEdit = token ? await verifyBracketToken(b, token) : false;
+        const tokenValid = token ? await verifyBracketToken(b, token) : false;
+        const canEdit = tokenValid && !isPastDeadline();
         setEditable(canEdit);
         if (canEdit) {
           // Hydrate the store from Firestore only if we don't already have this bracket loaded.
@@ -89,9 +91,10 @@ export function BracketEdit() {
   if (!pool || !bracket || !poolId) return null;
 
   if (!editable) {
-    const finalizedDate = bracket.finalizedAt
+    const submittedDate = bracket.finalizedAt
       ? new Date(bracket.finalizedAt).toLocaleString()
       : null;
+    const locked = isPastDeadline();
     return (
       <BracketViewer
         picks={bracket.picks}
@@ -103,15 +106,20 @@ export function BracketEdit() {
               <Link to={`/pool/${pool.id}`} className="underline hover:text-text">
                 {pool.name}
               </Link>
-              {finalizedDate ? (
+              {submittedDate ? (
                 <>
                   {' '}
-                  &middot; <span className="text-accent">finalized {finalizedDate}</span>
+                  &middot; <span className="text-accent">submitted {submittedDate}</span>
                 </>
               ) : (
-                <> &middot; in progress</>
+                <> &middot; not submitted</>
               )}
             </p>
+            {locked && (
+              <p className="mt-2 text-xs text-muted">
+                Bracket locked at {formatDeadline()} (1h before the first WC 2026 game).
+              </p>
+            )}
           </header>
         }
       />

@@ -93,11 +93,14 @@ describe('applyCascade', () => {
     expect(p.knockout[90]?.winner).toBe('NED');
   });
 
-  it('clears finalizedAt when picks are not complete', () => {
+  it('does not clear finalizedAt — submitted is one-way', () => {
+    // Once a user has submitted, that state persists. Edits keep flowing in
+    // until the deadline; we never bounce them back into "not submitted".
     const picks = makeInitialPicks();
-    picks.finalizedAt = Date.now();
+    const ts = 1234567890;
+    picks.finalizedAt = ts;
     const next = applyCascade(picks);
-    expect(next.finalizedAt).toBeNull();
+    expect(next.finalizedAt).toBe(ts);
   });
 
   it('does not touch finalizedAt when it was already null', () => {
