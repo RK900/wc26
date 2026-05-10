@@ -5,7 +5,7 @@ import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: '/worldcup/',
+  base: '/wc26/',
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

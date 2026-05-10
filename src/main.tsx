@@ -6,7 +6,7 @@ import './index.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter basename="/worldcup">
+    <BrowserRouter basename="/wc26">
       <App />
     </BrowserRouter>
   </StrictMode>,

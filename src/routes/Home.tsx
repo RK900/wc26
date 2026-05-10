@@ -121,7 +121,7 @@ function JoinExistingPool() {
 }
 
 // Accepts either a raw pool ID or a full URL like
-// "https://www.koodli.com/worldcup/pool/abc123/join" or ".../pool/abc123".
+// "https://www.koodli.com/wc26/pool/abc123/join" or ".../pool/abc123".
 function extractPoolId(input: string): string | null {
   if (!input) return null;
   const match = input.match(/\/pool\/([^/?#]+)/);
