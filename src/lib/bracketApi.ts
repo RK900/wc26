@@ -105,6 +105,33 @@ export function subscribeToPoolBrackets(
   });
 }
 
+// Full brackets including picks. Used by the leaderboard, which needs the
+// picks to compute scores. onSnapshot fetches every doc either way, so
+// this costs the same reads as the summary variant.
+export function subscribeToPoolBracketsFull(
+  poolId: string,
+  cb: (brackets: Bracket[]) => void,
+): Unsubscribe {
+  const { db } = getFirebase();
+  return onSnapshot(collection(db, 'pools', poolId, 'brackets'), (snap) => {
+    const brackets: Bracket[] = snap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        poolId,
+        name: data.name,
+        nickname: data.nickname,
+        ownerTokenHash: data.ownerTokenHash,
+        ownerTokenSalt: data.ownerTokenSalt,
+        picks: data.picks,
+        updatedAt: data.updatedAt,
+        finalizedAt: data.finalizedAt ?? null,
+      };
+    });
+    cb(brackets);
+  });
+}
+
 export async function verifyBracketToken(bracket: Bracket, token: string): Promise<boolean> {
   return verifyHash(token, bracket.ownerTokenSalt, bracket.ownerTokenHash);
 }
