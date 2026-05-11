@@ -99,24 +99,18 @@ export function BracketEdit() {
       <BracketViewer
         picks={bracket.picks}
         header={
-          <header>
+          <header className="space-y-2">
+            <PoolChip poolId={pool.id} poolName={pool.name} />
             <h1 className="text-2xl font-semibold">{bracket.nickname}&rsquo;s bracket</h1>
-            <p className="mt-1 text-sm text-muted">
-              Pool:{' '}
-              <Link to={`/pool/${pool.id}`} className="underline hover:text-text">
-                {pool.name}
-              </Link>
+            <p className="text-sm text-muted">
               {submittedDate ? (
-                <>
-                  {' '}
-                  &middot; <span className="text-accent">submitted {submittedDate}</span>
-                </>
+                <span className="text-accent">submitted {submittedDate}</span>
               ) : (
-                <> &middot; not submitted</>
+                'not submitted'
               )}
             </p>
             {locked && (
-              <p className="mt-2 text-xs text-muted">
+              <p className="text-xs text-muted">
                 Bracket locked at {formatDeadline()} (1h before the first WC 2026 game).
               </p>
             )}
@@ -135,16 +129,11 @@ export function BracketEdit() {
       <BracketEditor
         header={
           <header className="space-y-3">
+            <PoolChip poolId={pool.id} poolName={pool.name} />
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <h1 className="text-xl font-semibold">{bracket.nickname}&rsquo;s bracket</h1>
               <SaveIndicator status={saveStatus} />
             </div>
-            <p className="text-sm text-muted">
-              Pool:{' '}
-              <Link to={`/pool/${pool.id}`} className="underline hover:text-text">
-                {pool.name}
-              </Link>
-            </p>
             {editLinkUrl && <CopyEditLink url={editLinkUrl} />}
           </header>
         }
@@ -188,5 +177,20 @@ function SaveIndicator({ status }: { status: 'idle' | 'saving' | 'saved' | 'erro
   const colorClass =
     status === 'error' ? 'text-danger' : status === 'saved' ? 'text-accent' : 'text-muted';
   return <span className={`text-xs ${colorClass}`}>{text}</span>;
+}
+
+function PoolChip({ poolId, poolName }: { poolId: string; poolName: string }) {
+  return (
+    <Link
+      to={`/pool/${poolId}`}
+      className="inline-flex items-center gap-2 rounded-md border border-accent/40 bg-accent/10 px-3 py-1.5 text-sm font-semibold text-accent transition hover:bg-accent/20"
+    >
+      <span className="text-[10px] font-bold uppercase tracking-widest text-accent/70">
+        Pool
+      </span>
+      <span>{poolName}</span>
+      <span aria-hidden className="text-accent/60">&rarr;</span>
+    </Link>
+  );
 }
 
