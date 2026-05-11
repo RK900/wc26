@@ -4,7 +4,6 @@ import { BEST3_SLOT_MATCH_IDS, MATCHES_BY_ROUND } from '@/data/bracket';
 import { GROUPS, GROUP_BY_LETTER, GROUP_LETTERS } from '@/data/groups';
 import { TEAMS } from '@/data/teams';
 import {
-  ADMIN_EMAIL,
   isAdminUser,
   signInAsAdmin,
   signOutAdmin,
@@ -46,10 +45,27 @@ function NotConfigured() {
 
 function AdminGate() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
+  const [adminCheck, setAdminCheck] = useState<'pending' | 'admin' | 'denied'>('pending');
   const [signInError, setSignInError] = useState<string | null>(null);
   const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => subscribeAuth(setUser), []);
+
+  useEffect(() => {
+    if (user === undefined) return;
+    if (!user || user.isAnonymous) {
+      setAdminCheck('pending');
+      return;
+    }
+    setAdminCheck('pending');
+    let cancelled = false;
+    isAdminUser(user).then((ok) => {
+      if (!cancelled) setAdminCheck(ok ? 'admin' : 'denied');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   if (user === undefined) {
     return <div className="text-muted">Loading…</div>;
@@ -60,7 +76,7 @@ function AdminGate() {
       <div className="mx-auto max-w-md rounded-lg border border-border bg-surface p-8 text-center">
         <h1 className="mb-2 text-xl font-semibold">Admin Sign In</h1>
         <p className="mb-6 text-sm text-muted">
-          Authorized for <code>{ADMIN_EMAIL}</code> only.
+          Only the authorized admin account can write to this site.
         </p>
         <button
           disabled={signingIn}
@@ -86,13 +102,23 @@ function AdminGate() {
     );
   }
 
-  if (!isAdminUser(user)) {
+  if (adminCheck === 'pending') {
+    return <div className="text-muted">Checking admin status…</div>;
+  }
+
+  if (adminCheck === 'denied') {
     return (
       <div className="mx-auto max-w-md rounded-lg border border-border bg-surface p-8 text-center">
         <h1 className="mb-2 text-xl font-semibold">Not authorized</h1>
-        <p className="mb-6 text-sm text-muted">
-          Signed in as <code>{user.email ?? 'unknown'}</code>. Only{' '}
-          <code>{ADMIN_EMAIL}</code> can access this page.
+        <p className="mb-2 text-sm text-muted">
+          This account isn't the admin. Your Firebase UID is:
+        </p>
+        <code className="mb-4 block break-all rounded bg-surface-2 px-3 py-2 text-xs">
+          {user.uid}
+        </code>
+        <p className="mb-6 text-xs text-muted">
+          If you're bootstrapping admin access, paste this UID into the{' '}
+          <code>/admin/config</code> doc in Firestore (field <code>uid</code>).
         </p>
         <button
           onClick={() => signOutAdmin()}

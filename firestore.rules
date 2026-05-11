@@ -1,6 +1,17 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Admin identity check. The authorized admin UID lives in the
+    // /admin/config Firestore doc — NOT in this rules file or in app
+    // source code. Bootstrap once via Firebase Console (Console writes
+    // bypass rules): create /admin/config with { uid: '<your uid>' }.
+    function isAdminUser() {
+      return request.auth != null
+             && request.auth.token.email_verified == true
+             && exists(/databases/$(database)/documents/admin/config)
+             && request.auth.uid == get(/databases/$(database)/documents/admin/config).data.uid;
+    }
+
     // Pools — created by anyone authenticated; immutable after creation.
     // The password is gated client-side: client only renders the join form
     // if the user types a password matching the stored hash. The doc only
@@ -33,13 +44,18 @@ service cloud.firestore {
     }
 
     // Canonical tournament results. Public read (the leaderboard needs it).
-    // Writes are gated by the admin's verified Google email; an anonymous
-    // user can never satisfy this rule.
+    // Writes are gated by isAdminUser() — see comment at top of rules.
     match /results/{docId} {
       allow read: if true;
-      allow write: if request.auth != null
-                   && request.auth.token.email == 'rovik05@gmail.com'
-                   && request.auth.token.email_verified == true;
+      allow write: if isAdminUser();
+    }
+
+    // Admin config (UID lookup). Public read; the UID is a random
+    // Firebase token, not PII. Writes locked to current admin so the
+    // admin can rotate it later if needed.
+    match /admin/{docId} {
+      allow read: if true;
+      allow write: if isAdminUser();
     }
   }
 }
