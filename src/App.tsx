@@ -19,6 +19,9 @@ const PoolView = lazy(() =>
 const BracketEdit = lazy(() =>
   import('@/routes/BracketEdit').then((m) => ({ default: m.BracketEdit })),
 );
+const Admin = lazy(() =>
+  import('@/routes/Admin').then((m) => ({ default: m.Admin })),
+);
 
 function RouteFallback() {
   return <div className="text-muted">Loading…</div>;
@@ -59,6 +62,14 @@ export default function App() {
           element={
             <Suspense fallback={<RouteFallback />}>
               <BracketEdit />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <Admin />
             </Suspense>
           }
         />

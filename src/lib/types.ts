@@ -82,3 +82,15 @@ export interface BracketSummary {
   finalizedAt: number | null;
   updatedAt: number;
 }
+
+// Canonical tournament results — same shape as a bracket, but represents
+// ground truth instead of a user prediction.
+export interface ResultsDoc {
+  picks: BracketPicks;
+  lastUpdated: number;
+  lastUpdatedBy: 'admin' | 'espn-cron';
+  // Reserved for ESPN automation: fields the admin overrode by hand and
+  // the poller must not clobber. Keyed by '{section}.{key}' (e.g.,
+  // 'groups.A', 'thirdPlace', 'knockout.89'). Optional for now.
+  manualOverrides?: Record<string, true>;
+}
