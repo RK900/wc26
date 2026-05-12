@@ -6,6 +6,15 @@ on:
     # tournament window (2026-06-11 → 2026-07-20).
     - cron: '*/30 * * * *'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Run mode'
+        required: true
+        default: 'normal'
+        type: choice
+        options:
+          - normal
+          - smoke
 
 permissions:
   contents: read
@@ -24,6 +33,12 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm install --no-audit --no-fund
-      - run: npm run poll-espn
+      - name: Run poller
+        run: |
+          if [ "${{ inputs.mode }}" = "smoke" ]; then
+            npm run poll-espn -- --smoke
+          else
+            npm run poll-espn
+          fi
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

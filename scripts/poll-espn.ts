@@ -44,6 +44,10 @@ const TOURNAMENT_START = Date.parse('2026-06-11T00:00:00Z');
 const TOURNAMENT_END = Date.parse('2026-07-20T23:59:59Z');
 
 const DRY_RUN = process.argv.includes('--dry-run');
+// --smoke: bypass the tournament window check, exercise the whole pipeline
+// (ESPN fetch, Firestore auth + read, poll logic) but never write. Use it
+// to verify credentials and wiring before the tournament starts.
+const SMOKE = process.argv.includes('--smoke');
 
 // ESPN abbreviations that differ from our team codes. Add overrides as
 // the poller logs warnings — most teams use identical FIFA codes.
@@ -387,8 +391,11 @@ function logResult(result: PollResult): void {
 }
 
 async function main() {
+  if (SMOKE) {
+    console.log('SMOKE TEST — bypassing tournament window; will not write.');
+  }
   const now = Date.now();
-  if (now < TOURNAMENT_START || now > TOURNAMENT_END) {
+  if (!SMOKE && (now < TOURNAMENT_START || now > TOURNAMENT_END)) {
     console.log(
       `Outside tournament window (${new Date(TOURNAMENT_START).toISOString()} → ${new Date(TOURNAMENT_END).toISOString()}); exiting.`,
     );
@@ -434,6 +441,14 @@ async function main() {
   const { nextPicks, result } = poll(picks, events);
   logResult(result);
 
+  if (SMOKE) {
+    console.log(
+      hasChanges(result)
+        ? 'SMOKE TEST OK — pipeline works, would have written changes.'
+        : 'SMOKE TEST OK — pipeline works, no changes to write yet.',
+    );
+    return;
+  }
   if (!hasChanges(result)) {
     console.log('No changes.');
     return;
