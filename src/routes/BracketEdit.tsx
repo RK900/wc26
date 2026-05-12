@@ -211,7 +211,7 @@ function ScoreBadge({ current, max }: { current: number; max: number }) {
       className="inline-flex items-baseline gap-1.5 rounded-md border border-border bg-surface-2 px-3 py-1.5"
       title={`${current} earned, max attainable ${max}. Max drops as your picks are eliminated.`}
     >
-      <span className="text-[10px] font-bold uppercase tracking-widest text-muted">Score</span>
+      <span className="text-[10px] font-bold uppercase tracking-widest text-muted">Points</span>
       <span className="font-mono text-base font-semibold text-text">{current}</span>
       <span className="font-mono text-xs text-muted">/ {max}</span>
     </div>

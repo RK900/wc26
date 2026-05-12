@@ -131,11 +131,9 @@ export function PoolView() {
                     className="flex items-center justify-between rounded-md border border-border bg-surface px-4 py-3 text-sm transition hover:border-accent/50"
                   >
                     <span className="flex items-center gap-3">
-                      {hasResults && (
-                        <span className="w-6 text-right text-xs font-mono text-muted">
-                          {i + 1}
-                        </span>
-                      )}
+                      <span className="w-6 text-right text-xs font-mono text-muted">
+                        {i + 1}
+                      </span>
                       <span className="font-semibold">{m.nickname}</span>
                       {isMine && (
                         <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold text-accent">
