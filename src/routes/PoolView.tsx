@@ -112,7 +112,7 @@ export function PoolView() {
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">
-          {hasResults ? 'Leaderboard' : 'Members'}
+          Leaderboard
         </h2>
         {rows.length === 0 ? (
           <p className="text-sm text-muted">No brackets submitted yet.</p>
@@ -140,23 +140,17 @@ export function PoolView() {
                           you
                         </span>
                       )}
-                    </span>
-                    <span className="flex items-center gap-3 text-xs text-muted">
-                      {hasResults && (
-                        <span className="font-mono">
-                          <span className="text-base font-semibold text-text">
-                            {row.score ?? 0}
-                          </span>
-                          <span className="text-muted"> / {row.max}</span>
+                      {m.finalizedAt && (
+                        <span className="text-[10px] uppercase tracking-wider text-accent/80">
+                          submitted
                         </span>
                       )}
-                      {!hasResults && (
-                        m.finalizedAt ? (
-                          <span className="text-accent">submitted</span>
-                        ) : (
-                          'in progress'
-                        )
-                      )}
+                    </span>
+                    <span className="font-mono">
+                      <span className="text-base font-semibold text-text">
+                        {row.score ?? 0}
+                      </span>
+                      <span className="text-xs text-muted"> / {row.max}</span>
                     </span>
                   </Link>
                 </li>
