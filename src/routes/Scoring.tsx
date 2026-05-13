@@ -38,7 +38,7 @@ export function Scoring() {
         <h1 className="mt-1 text-2xl font-semibold">{MAX_SCORE} points up for grabs</h1>
         <p className="mt-3 text-sm text-muted">
           Group stage <span className="text-text">{GROUP_TOTAL}</span> ·{' '}
-          Knockout <span className="text-text">{KO_TOTAL}</span> · Live scoring via ESPN
+          Knockout <span className="text-text">{KO_TOTAL}</span>
         </p>
       </header>
 
@@ -167,9 +167,8 @@ export function Scoring() {
           </li>
         </ol>
         <p className="mt-3 rounded-md border border-border bg-surface-2 px-3 py-2 text-xs text-muted">
-          Example: you pick Brazil to win the Final. Implicit in that: you also picked Brazil
-          to win their R32, R16, QF, and SF matches on the way there. Brazil loses in R32.
-          All five Brazil picks are now dead, and your max drops by{' '}
+          Example: you pick Brazil to win the Final. Brazil actually loses in R32.
+          Your max would drop by{' '}
           <span className="font-mono text-text">
             {ROUND_POINTS.R32 + ROUND_POINTS.R16 + ROUND_POINTS.QF + ROUND_POINTS.SF + ROUND_POINTS.F}
           </span>{' '}
@@ -180,20 +179,14 @@ export function Scoring() {
 
       <Section title="Tiebreaker">
         <p>
-          When you pick the Final winner, a text box pops up asking for your guess of the
-          total number of goals scored in the Final (regulation + extra time, not counting
-          penalty shootout goals).
-        </p>
-        <p className="mt-2">
-          If two brackets are tied on points, the one whose guess is <em>closer</em> to the
-          actual total wins. Still tied? Falls back to alphabetical by nickname.
+          If two brackets are tied on points at the end of the tournament, the goals scored in the Final is used as the tiebraker.
         </p>
       </Section>
 
       <Section title="Live updates">
         <p>
           Scores update automatically. A GitHub Action polls ESPN every 30 minutes during the
-          tournament window (Jun 11 → Jul 20, 2026) and writes results to the database.
+          tournament window (Jun 11 → Jul 20, 2026).
         </p>
       </Section>
 
