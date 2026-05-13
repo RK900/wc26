@@ -52,6 +52,10 @@ export interface BracketPicks {
   thirdPlace: ThirdPlacePicks;
   knockout: Record<MatchId, KnockoutPick>;
   finalizedAt: number | null;
+  // Total goals scored in the Final (regulation + ET, not counting penalty
+  // shootout goals). Used as the leaderboard tiebreaker. Same field holds
+  // the user's prediction in their picks and the actual count in results.
+  finalGoalsGuess?: number | null;
 }
 
 // Persisted documents (Firestore)

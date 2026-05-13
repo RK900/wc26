@@ -317,6 +317,17 @@ function pollKnockoutWinners(
     const winner = espnToOurCode(winnerComp.team.abbreviation);
     picks.knockout[m.id] = { winner };
     updates.push({ matchId: m.id, round: m.round, winner });
+
+    // If this is the Final and admin hasn't set the tiebreaker total
+    // goals yet, derive it from the ESPN competitor scores.
+    if (m.round === 'F' && (picks.finalGoalsGuess ?? null) === null) {
+      const comps = event.competitions?.[0]?.competitors ?? [];
+      const home = Number(comps[0]?.score);
+      const away = Number(comps[1]?.score);
+      if (Number.isFinite(home) && Number.isFinite(away)) {
+        picks.finalGoalsGuess = home + away;
+      }
+    }
   }
 
   return { updates, skipped };

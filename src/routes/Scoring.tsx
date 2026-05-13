@@ -180,7 +180,13 @@ export function Scoring() {
 
       <Section title="Tiebreaker">
         <p>
-          Ties on the leaderboard sort alphabetically by nickname.
+          When you pick the Final winner, a text box pops up asking for your guess of the
+          total number of goals scored in the Final (regulation + extra time, not counting
+          penalty shootout goals).
+        </p>
+        <p className="mt-2">
+          If two brackets are tied on points, the one whose guess is <em>closer</em> to the
+          actual total wins. Still tied? Falls back to alphabetical by nickname.
         </p>
       </Section>
 
@@ -188,10 +194,6 @@ export function Scoring() {
         <p>
           Scores update automatically. A GitHub Action polls ESPN every 30 minutes during the
           tournament window (Jun 11 → Jul 20, 2026) and writes results to the database.
-        </p>
-        <p className="mt-2 text-xs text-muted">
-          The admin can manually correct any result, and manual entries take precedence over
-          the auto-poller.
         </p>
       </Section>
 

@@ -61,10 +61,24 @@ export function PoolView() {
       score: results ? scoreBracket(b.picks, results.picks).total : null,
       max: results ? maxAttainable(b.picks, results.picks) : MAX_SCORE,
     }));
-    list.sort(
-      (a, b) =>
-        (b.score ?? 0) - (a.score ?? 0) || a.bracket.nickname.localeCompare(b.bracket.nickname),
-    );
+    // Tiebreaker: when scores are equal, the bracket whose final-goals
+    // guess is closer to the actual final-goals count wins. Falls back
+    // to alphabetical if no actual final-goals count is known yet OR if
+    // two brackets are equally close.
+    const actualFinalGoals = results?.picks.finalGoalsGuess ?? null;
+    const goalDiff = (guess: number | null | undefined): number => {
+      if (actualFinalGoals === null || guess === null || guess === undefined) {
+        return Number.POSITIVE_INFINITY;
+      }
+      return Math.abs(guess - actualFinalGoals);
+    };
+    list.sort((a, b) => {
+      const scoreCmp = (b.score ?? 0) - (a.score ?? 0);
+      if (scoreCmp !== 0) return scoreCmp;
+      const goalCmp = goalDiff(a.bracket.picks.finalGoalsGuess) - goalDiff(b.bracket.picks.finalGoalsGuess);
+      if (goalCmp !== 0) return goalCmp;
+      return a.bracket.nickname.localeCompare(b.bracket.nickname);
+    });
     return list;
   }, [brackets, results]);
 

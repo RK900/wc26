@@ -28,6 +28,7 @@ const initialPicks = (): BracketPicks => ({
   thirdPlace: { advancingGroups: [] },
   knockout: {},
   finalizedAt: null,
+  finalGoalsGuess: null,
 });
 
 interface BracketState {
@@ -40,6 +41,7 @@ interface BracketState {
   commitGroup: (g: GroupLetter) => void;
   setThirdPlaceAdvancers: (groups: GroupLetter[]) => void;
   setKnockoutWinner: (matchId: MatchId, team: TeamCode | null) => void;
+  setFinalGoalsGuess: (goals: number | null) => void;
   finalize: () => void;
   resetAll: () => void;
 
@@ -97,6 +99,11 @@ export const useBracketStore = create<BracketState>()(
               [matchId]: { winner: team },
             },
           }),
+        })),
+
+      setFinalGoalsGuess: (goals) =>
+        set((state) => ({
+          picks: { ...state.picks, finalGoalsGuess: goals },
         })),
 
       finalize: () =>

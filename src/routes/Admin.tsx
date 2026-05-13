@@ -252,6 +252,16 @@ function AdminDashboard({ user }: DashboardProps) {
         <KnockoutWinners picks={picks} onChange={update} />
       </Section>
 
+      <Section
+        title="Final goals (tiebreaker)"
+        subtitle="Total goals scored in the Final, regulation + extra time. Used to break leaderboard ties."
+      >
+        <FinalGoalsInput
+          value={picks.finalGoalsGuess ?? null}
+          onChange={(goals) => update({ ...picks, finalGoalsGuess: goals })}
+        />
+      </Section>
+
       <SaveBar
         dirty={dirty}
         saving={saving}
@@ -259,6 +269,37 @@ function AdminDashboard({ user }: DashboardProps) {
         onSave={save}
       />
     </div>
+  );
+}
+
+function FinalGoalsInput({
+  value,
+  onChange,
+}: {
+  value: number | null;
+  onChange: (n: number | null) => void;
+}) {
+  return (
+    <input
+      type="number"
+      min={0}
+      max={99}
+      step={1}
+      inputMode="numeric"
+      value={value === null ? '' : value}
+      placeholder="—"
+      onChange={(e) => {
+        const raw = e.target.value;
+        if (raw === '') {
+          onChange(null);
+          return;
+        }
+        const n = Number(raw);
+        if (!Number.isInteger(n) || n < 0 || n > 99) return;
+        onChange(n);
+      }}
+      className="w-24 rounded-md border border-border bg-surface-2 px-2 py-1.5 text-sm focus:border-accent focus:outline-none"
+    />
   );
 }
 

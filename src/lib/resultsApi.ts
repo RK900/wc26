@@ -26,6 +26,7 @@ export function emptyResultsPicks(): BracketPicks {
     thirdPlace: { advancingGroups: [] },
     knockout,
     finalizedAt: null,
+    finalGoalsGuess: null,
   };
 }
 
