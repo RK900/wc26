@@ -42,6 +42,12 @@ interface BracketState {
   setKnockoutWinner: (matchId: MatchId, team: TeamCode | null) => void;
   finalize: () => void;
   resetAll: () => void;
+
+  // Bulk-clear helpers. None of them touch finalizedAt — once submitted,
+  // the bracket stays submitted (matches the "submit is one-way" rule).
+  clearGroups: () => void;
+  clearThirdPlace: () => void;
+  clearKnockout: () => void;
 }
 
 export const useBracketStore = create<BracketState>()(
@@ -108,6 +114,32 @@ export const useBracketStore = create<BracketState>()(
           bracketId: null,
           editToken: null,
         }),
+
+      clearGroups: () =>
+        set((state) => ({
+          picks: applyCascade({
+            groups: initialGroups(),
+            thirdPlace: { advancingGroups: [] },
+            knockout: {},
+            finalizedAt: state.picks.finalizedAt,
+          }),
+        })),
+
+      clearThirdPlace: () =>
+        set((state) => ({
+          picks: applyCascade({
+            ...state.picks,
+            thirdPlace: { advancingGroups: [] },
+          }),
+        })),
+
+      clearKnockout: () =>
+        set((state) => ({
+          picks: applyCascade({
+            ...state.picks,
+            knockout: {},
+          }),
+        })),
     }),
     {
       name: 'dleuworldcup:state',
