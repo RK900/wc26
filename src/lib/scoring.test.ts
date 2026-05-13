@@ -149,17 +149,24 @@ describe('maxAttainable', () => {
     expect(maxAttainable(picks, results)).toBe(scoreBracket(picks, results).total);
   });
 
-  it('drops a Final pick from max once that team is eliminated', () => {
+  it('drops every BRA pick from max when BRA is eliminated in R32', () => {
     const picks = blankPicks();
     const results = blankPicks();
-    // I picked BRA to win the Final (16 pts on the table).
-    picks.knockout[104] = { winner: 'BRA' };
-    // But BRA loses in R32 — say match 76 (1C v 2F).
-    // Make BRA the home (1C from group C).
+    // I picked BRA to win R32, R16, QF, SF, AND Final — implicit when
+    // you predict a team to win the tournament. Knockout match IDs are
+    // arbitrary here; resolveSlot doesn't validate the pick is in the
+    // match, but the alive-team check does.
+    picks.knockout[76] = { winner: 'BRA' }; // R32
+    picks.knockout[91] = { winner: 'BRA' }; // R16
+    picks.knockout[99] = { winner: 'BRA' }; // QF
+    picks.knockout[102] = { winner: 'BRA' }; // SF
+    picks.knockout[104] = { winner: 'BRA' }; // Final
+    // BRA loses R32 (match 76, 1C v 2F).
     results.groups.C.order = ['BRA', 'MAR', 'HAI', 'SCO'];
     results.groups.F.order = ['NED', 'JPN', 'SWE', 'TUN'];
-    results.knockout[76] = { winner: 'JPN' }; // BRA loses
-    // Without BRA alive, my Final pick contributes 0 to remaining.
+    results.knockout[76] = { winner: 'JPN' };
+    // BRA dead → every unscored BRA pick contributes 0 to remaining,
+    // and R32 (scored, wrong) contributes 0 to current. Max = current.
     expect(maxAttainable(picks, results)).toBe(scoreBracket(picks, results).total);
   });
 

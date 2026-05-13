@@ -167,9 +167,14 @@ export function Scoring() {
           </li>
         </ol>
         <p className="mt-3 rounded-md border border-border bg-surface-2 px-3 py-2 text-xs text-muted">
-          Example: you pick Brazil to win the Final. Brazil loses in R32. Your max drops by{' '}
-          <span className="font-mono text-text">{ROUND_POINTS.F}</span> pts immediately — the
-          Final isn't reachable for you anymore, even before it's played.
+          Example: you pick Brazil to win the Final. Implicit in that: you also picked Brazil
+          to win their R32, R16, QF, and SF matches on the way there. Brazil loses in R32.
+          All five Brazil picks are now dead, and your max drops by{' '}
+          <span className="font-mono text-text">
+            {ROUND_POINTS.R32 + ROUND_POINTS.R16 + ROUND_POINTS.QF + ROUND_POINTS.SF + ROUND_POINTS.F}
+          </span>{' '}
+          pts immediately ({ROUND_POINTS.R32} + {ROUND_POINTS.R16} + {ROUND_POINTS.QF} +{' '}
+          {ROUND_POINTS.SF} + {ROUND_POINTS.F}).
         </p>
       </Section>
 
