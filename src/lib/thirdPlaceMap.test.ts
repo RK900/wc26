@@ -83,22 +83,15 @@ describe('mapThirdPlaceAdvancers', () => {
     });
   });
 
-  it('partial pick (4 groups): no group placed twice, all placed groups are eligible', () => {
-    const input: GroupLetter[] = ['A', 'B', 'C', 'D'];
-    const r = mapThirdPlaceAdvancers(input);
-    const filled = r.slots.filter((s) => s.group !== null);
-    expect(filled.length).toBeLessThanOrEqual(input.length);
-    expect(filled.length + r.unmatched.length).toBe(input.length);
-
-    const used = new Set(filled.map((s) => s.group));
-    expect(used.size).toBe(filled.length);
-
-    filled.forEach((slot) => {
-      const m = MATCHES_BY_ID[slot.matchId];
-      if (m.away.kind === 'best3') {
-        expect(m.away.eligibleGroups).toContain(slot.group);
-      }
-    });
+  it('partial pick (< 8 groups): leaves all slots null, slot assignment is undetermined', () => {
+    // Slot placement depends on the full 8-of-12 set, so any partial
+    // pick must return blank slots — no preview placement.
+    for (const n of [1, 2, 4, 7]) {
+      const input = ALL_GROUPS.slice(0, n);
+      const r = mapThirdPlaceAdvancers(input);
+      expect(r.slots).toHaveLength(8);
+      r.slots.forEach((s) => expect(s.group).toBeNull());
+    }
   });
 
   it('is deterministic regardless of input order', () => {
