@@ -31,7 +31,7 @@ interface Props {
 // Visual "saving…" pulse duration when the user reorders teams in a
 // committed group. Doesn't need to match the actual debounced save
 // (1s) — it's just feedback so the action feels responsive.
-const SAVE_PULSE_MS = 700;
+const SAVE_PULSE_MS = 300;
 
 function ordersEqual(a: GroupOrder, b: GroupOrder): boolean {
   for (let i = 0; i < 4; i++) {
