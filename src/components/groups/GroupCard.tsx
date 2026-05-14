@@ -17,6 +17,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import clsx from 'clsx';
+import { useEffect, useRef, useState } from 'react';
 import { TEAMS } from '@/data/teams';
 import { TeamFlag } from '@/components/ui/TeamFlag';
 import { useEditing } from '@/components/bracket/EditingContext';
@@ -27,6 +28,18 @@ interface Props {
   group: GroupDef;
 }
 
+// Visual "saving…" pulse duration when the user reorders teams in a
+// committed group. Doesn't need to match the actual debounced save
+// (1s) — it's just feedback so the action feels responsive.
+const SAVE_PULSE_MS = 700;
+
+function ordersEqual(a: GroupOrder, b: GroupOrder): boolean {
+  for (let i = 0; i < 4; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
 export function GroupCard({ group }: Props) {
   const { picks, editable } = useEditing();
   const { order, committed } = picks.groups[group.letter];
@@ -35,6 +48,22 @@ export function GroupCard({ group }: Props) {
 
   const orderTeams = order.filter((t): t is TeamCode => t !== null);
 
+  // Brief "Saving…" → "Saved" transition each time the user reorders
+  // teams after the group has been committed.
+  const [saving, setSaving] = useState(false);
+  const prevOrder = useRef<GroupOrder>(order);
+  useEffect(() => {
+    if (!committed) {
+      prevOrder.current = order;
+      return;
+    }
+    if (ordersEqual(prevOrder.current, order)) return;
+    prevOrder.current = order;
+    setSaving(true);
+    const t = setTimeout(() => setSaving(false), SAVE_PULSE_MS);
+    return () => clearTimeout(t);
+  }, [order, committed]);
+
   return (
     <div className="rounded-lg border border-border bg-surface p-4">
       <div className="mb-3 flex items-baseline justify-between">
@@ -42,8 +71,13 @@ export function GroupCard({ group }: Props) {
           Group {group.letter}
         </h3>
         {committed && (
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-accent">
-            committed
+          <span
+            className={clsx(
+              'text-[10px] font-semibold uppercase tracking-wider transition-colors',
+              saving ? 'text-muted' : 'text-accent',
+            )}
+          >
+            {saving ? 'Saving…' : 'Saved'}
           </span>
         )}
       </div>

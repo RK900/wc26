@@ -122,13 +122,17 @@ export const useBracketStore = create<BracketState>()(
           editToken: null,
         }),
 
+      // Clearing predictions un-submits the bracket. Submit was "one-way"
+      // from a forward-only perspective, but an explicit Clear action (with
+      // its confirm dialog) is a deliberate reset — the user can re-submit
+      // after re-filling.
       clearGroups: () =>
-        set((state) => ({
+        set(() => ({
           picks: applyCascade({
             groups: initialGroups(),
             thirdPlace: { advancingGroups: [] },
             knockout: {},
-            finalizedAt: state.picks.finalizedAt,
+            finalizedAt: null,
           }),
         })),
 
@@ -137,6 +141,7 @@ export const useBracketStore = create<BracketState>()(
           picks: applyCascade({
             ...state.picks,
             thirdPlace: { advancingGroups: [] },
+            finalizedAt: null,
           }),
         })),
 
@@ -145,6 +150,7 @@ export const useBracketStore = create<BracketState>()(
           picks: applyCascade({
             ...state.picks,
             knockout: {},
+            finalizedAt: null,
           }),
         })),
     }),
