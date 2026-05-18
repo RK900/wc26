@@ -5,15 +5,25 @@ import type { BracketPicks } from '@/lib/types';
 interface EditingState {
   picks: BracketPicks;
   editable: boolean;
+  // Live actual results (from the /results doc), or null if results have not
+  // been written yet. Used by GroupCard / ThirdPlaceTable / KnockoutMatch to
+  // tint each pick by correctness once results land.
+  results: BracketPicks | null;
 }
 
 const EditingContext = createContext<EditingState | null>(null);
 
 // Editor mode: subscribes to the bracket store as the source of truth.
-export function EditableProvider({ children }: { children: ReactNode }) {
+export function EditableProvider({
+  children,
+  results = null,
+}: {
+  children: ReactNode;
+  results?: BracketPicks | null;
+}) {
   const picks = useBracketStore((s) => s.picks);
   return (
-    <EditingContext.Provider value={{ picks, editable: true }}>
+    <EditingContext.Provider value={{ picks, editable: true, results }}>
       {children}
     </EditingContext.Provider>
   );
@@ -24,12 +34,14 @@ export function EditableProvider({ children }: { children: ReactNode }) {
 export function ReadOnlyProvider({
   picks,
   children,
+  results = null,
 }: {
   picks: BracketPicks;
   children: ReactNode;
+  results?: BracketPicks | null;
 }) {
   return (
-    <EditingContext.Provider value={{ picks, editable: false }}>
+    <EditingContext.Provider value={{ picks, editable: false, results }}>
       {children}
     </EditingContext.Provider>
   );

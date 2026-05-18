@@ -8,11 +8,12 @@ import type { BracketPicks } from '@/lib/types';
 interface Props {
   picks: BracketPicks;
   header?: React.ReactNode;
+  results?: BracketPicks | null;
 }
 
-export function BracketViewer({ picks, header }: Props) {
+export function BracketViewer({ picks, header, results = null }: Props) {
   return (
-    <ReadOnlyProvider picks={picks}>
+    <ReadOnlyProvider picks={picks} results={results}>
       <div className="space-y-12">
         {header}
         <section>

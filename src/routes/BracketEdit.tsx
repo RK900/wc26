@@ -81,6 +81,13 @@ export function BracketEdit() {
   // Debounced auto-save when picks change in editable mode.
   useEffect(() => {
     if (!editable || !bracket || !initialLoadDone.current) return;
+    // Defensive re-check: if the deadline passed mid-session, lock the
+    // editor and skip this save. The polling effect below flips editable
+    // to false within ~30s but a save could otherwise race past it.
+    if (isPastDeadline()) {
+      setEditable(false);
+      return;
+    }
     setSaveStatus('saving');
     const t = setTimeout(() => {
       updateBracketPicks({ bracket, picks })
@@ -92,6 +99,24 @@ export function BracketEdit() {
     }, SAVE_DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [picks, editable, bracket]);
+
+  // Flip out of editable mode when the deadline passes while the tab is
+  // open. Polling beats setTimeout because browsers cap long timeouts
+  // and throttle background tabs — we want to lock the editor regardless.
+  useEffect(() => {
+    if (!editable) return;
+    if (isPastDeadline()) {
+      setEditable(false);
+      return;
+    }
+    const id = setInterval(() => {
+      if (isPastDeadline()) {
+        setEditable(false);
+        clearInterval(id);
+      }
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [editable]);
 
   // Picks to score against — the live in-progress picks if editing, the
   // saved bracket picks if read-only.
@@ -118,6 +143,7 @@ export function BracketEdit() {
     return (
       <BracketViewer
         picks={bracket.picks}
+        results={results?.picks ?? null}
         header={
           <header className="space-y-2">
             <PoolChip poolId={pool.id} poolName={pool.name} />
@@ -150,6 +176,7 @@ export function BracketEdit() {
   return (
     <>
       <BracketEditor
+        results={results?.picks ?? null}
         header={
           <header className="space-y-3">
             <PoolChip poolId={pool.id} poolName={pool.name} />

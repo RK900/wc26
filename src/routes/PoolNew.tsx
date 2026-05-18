@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ensureSignedIn, isFirebaseConfigured } from '@/lib/firebase';
+import { formatDeadline, isPastDeadline } from '@/lib/deadline';
 import { createPool } from '@/lib/poolApi';
 import { createBracket } from '@/lib/bracketApi';
 import { saveOwnedBracket } from '@/lib/localStore';
@@ -19,6 +20,10 @@ export function PoolNew() {
     e.preventDefault();
     if (!isFirebaseConfigured()) {
       setError('Firebase is not configured. See README.');
+      return;
+    }
+    if (isPastDeadline()) {
+      setError(`Bracket submissions closed at ${formatDeadline()}.`);
       return;
     }
     if (!poolName.trim() || !password || !creatorName.trim() || !creatorNick.trim()) return;
@@ -51,6 +56,27 @@ export function PoolNew() {
       setBusy(false);
     }
   };
+
+  if (isPastDeadline()) {
+    return (
+      <div className="mx-auto max-w-md">
+        <h1 className="mb-1 text-2xl font-semibold">Create a pool</h1>
+        <div className="mt-4 rounded-md border border-warn/40 bg-warn/10 px-4 py-3 text-sm text-warn">
+          <p className="font-semibold">Bracket submissions are closed.</p>
+          <p className="mt-1 text-warn/80">
+            The deadline was {formatDeadline()}. New pools can't be created until
+            the next tournament.
+          </p>
+          <Link
+            to="/"
+            className="mt-3 inline-block rounded-md border border-warn/40 bg-warn/10 px-3 py-1.5 text-xs font-semibold hover:bg-warn/20"
+          >
+            Back to home
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-md">

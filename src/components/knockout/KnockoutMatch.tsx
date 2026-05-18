@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import { TEAMS } from '@/data/teams';
 import { TeamFlag } from '@/components/ui/TeamFlag';
 import { useEditing } from '@/components/bracket/EditingContext';
+import { knockoutCorrectness } from '@/lib/correctness';
 import { useBracketStore } from '@/store/bracketStore';
 import type { ResolvedMatch } from '@/lib/resolveBracket';
 import type { MatchId, SlotSpec, TeamCode } from '@/lib/types';
@@ -12,7 +13,7 @@ interface Props {
 
 export function KnockoutMatch({ match }: Props) {
   const { spec, home, away, winner } = match;
-  const { editable } = useEditing();
+  const { editable, results } = useEditing();
   const setKnockoutWinner = useBracketStore((s) => s.setKnockoutWinner);
 
   const togglePick = (matchId: MatchId, team: TeamCode | null) => {
@@ -20,8 +21,16 @@ export function KnockoutMatch({ match }: Props) {
     setKnockoutWinner(matchId, winner === team ? null : team);
   };
 
+  const correctness = knockoutCorrectness(spec.id, winner, results);
+  const borderClass =
+    correctness === 'correct'
+      ? 'border-accent/40'
+      : correctness === 'wrong'
+        ? 'border-danger/40'
+        : 'border-border';
+
   return (
-    <div className="rounded-md border border-border bg-surface text-sm">
+    <div className={clsx('rounded-md border bg-surface text-sm', borderClass)}>
       <div className="flex items-center justify-between border-b border-border/40 px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted">
         <span>Match {spec.id}</span>
       </div>

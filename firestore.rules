@@ -12,6 +12,14 @@ service cloud.firestore {
              && request.auth.uid == get(/databases/$(database)/documents/admin/config).data.uid;
     }
 
+    // Bracket submission deadline: 1 hour before the first World Cup 2026
+    // match (Mexico kicks off 12:00 PT on 2026-06-11). 11:00 PDT = 18:00
+    // UTC. Server-side enforcement — clients also check, but rules are
+    // the source of truth.
+    function beforeSubmitDeadline() {
+      return request.time < timestamp.date(2026, 6, 11, 18, 0, 0);
+    }
+
     // Pools — created by anyone authenticated; immutable after creation.
     // The password is gated client-side: client only renders the join form
     // if the user types a password matching the stored hash. The doc only
@@ -29,12 +37,15 @@ service cloud.firestore {
       // ownerTokenHash that was set on create. The client-side ALSO verifies
       // the writer knows the plaintext token (re-hashes against the salt and
       // compares) before mounting the editor; rules enforce that nobody can
-      // change the hash to lock out the original owner.
+      // change the hash to lock out the original owner. Both create and
+      // update are gated by the submission deadline.
       match /brackets/{bracketId} {
         allow read: if request.auth != null;
         allow create: if request.auth != null
+                      && beforeSubmitDeadline()
                       && request.resource.data.keys().hasAll(['name', 'nickname', 'ownerTokenHash', 'ownerTokenSalt', 'picks', 'updatedAt']);
         allow update: if request.auth != null
+                      && beforeSubmitDeadline()
                       && request.resource.data.ownerTokenHash == resource.data.ownerTokenHash
                       && request.resource.data.ownerTokenSalt == resource.data.ownerTokenSalt
                       && request.resource.data.name == resource.data.name

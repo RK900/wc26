@@ -25,6 +25,9 @@ const Admin = lazy(() =>
 const Scoring = lazy(() =>
   import('@/routes/Scoring').then((m) => ({ default: m.Scoring })),
 );
+const Smoke = lazy(() =>
+  import('@/routes/Smoke').then((m) => ({ default: m.Smoke })),
+);
 
 function RouteFallback() {
   return <div className="text-muted">Loading…</div>;
@@ -81,6 +84,14 @@ export default function App() {
           element={
             <Suspense fallback={<RouteFallback />}>
               <Scoring />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/smoke"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <Smoke />
             </Suspense>
           }
         />

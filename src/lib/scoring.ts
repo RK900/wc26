@@ -1,6 +1,7 @@
 import { MATCHES, MATCHES_BY_ROUND } from '@/data/bracket';
 import { GROUP_LETTERS } from '@/data/groups';
 import { TEAM_CODES } from '@/data/teams';
+import { groupRowCorrectness } from '@/lib/correctness';
 import { resolveSlot } from '@/lib/resolveBracket';
 import { mapThirdPlaceAdvancers } from '@/lib/thirdPlaceMap';
 import type { BracketPicks, GroupLetter, Round, TeamCode } from '@/lib/types';
@@ -86,20 +87,12 @@ function scoreGroup(
   results: BracketPicks,
 ): number {
   const p = picks.groups[letter]?.order;
-  const r = results.groups[letter]?.order;
-  if (!p || !r) return 0;
+  if (!p) return 0;
   let pts = 0;
   for (let i = 0; i < 4; i++) {
-    const predicted = p[i];
-    if (!predicted) continue;
-    // Find where the predicted team actually finished. indexOf returns -1
-    // if the team isn't in this group's actual order (e.g., results not
-    // yet entered for this group).
-    const actualPos = r.indexOf(predicted);
-    if (actualPos === -1) continue;
-    const distance = Math.abs(i - actualPos);
-    if (distance === 0) pts += GROUP_POSITION_EXACT_POINTS;
-    else if (distance === 1) pts += GROUP_POSITION_NEAR_POINTS;
+    const c = groupRowCorrectness(letter, p[i], i, results);
+    if (c === 'correct') pts += GROUP_POSITION_EXACT_POINTS;
+    else if (c === 'near') pts += GROUP_POSITION_NEAR_POINTS;
   }
   return pts;
 }

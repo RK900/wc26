@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ensureSignedIn, isFirebaseConfigured } from '@/lib/firebase';
+import { formatDeadline, isPastDeadline } from '@/lib/deadline';
 import { getPool, verifyPoolPassword } from '@/lib/poolApi';
 import { createBracket } from '@/lib/bracketApi';
 import { getOwnedBracket, saveOwnedBracket } from '@/lib/localStore';
@@ -58,6 +59,27 @@ export function PoolJoin() {
   if (error) return <ErrorBox message={error} />;
   if (!pool || !poolId) return null;
 
+  if (isPastDeadline()) {
+    return (
+      <div className="mx-auto max-w-md">
+        <h1 className="mb-1 text-2xl font-semibold">Join &ldquo;{pool.name}&rdquo;</h1>
+        <div className="mt-4 rounded-md border border-warn/40 bg-warn/10 px-4 py-3 text-sm text-warn">
+          <p className="font-semibold">Bracket submissions are closed.</p>
+          <p className="mt-1 text-warn/80">
+            The deadline was {formatDeadline()}. You can still view this pool's
+            leaderboard.
+          </p>
+          <Link
+            to={`/pool/${poolId}`}
+            className="mt-3 inline-block rounded-md border border-warn/40 bg-warn/10 px-3 py-1.5 text-xs font-semibold hover:bg-warn/20"
+          >
+            View pool
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const onPasswordSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!password) return;
@@ -75,6 +97,10 @@ export function PoolJoin() {
   const onProfileSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !nickname.trim()) return;
+    if (isPastDeadline()) {
+      setError(`Bracket submissions closed at ${formatDeadline()}.`);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {

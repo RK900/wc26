@@ -4,12 +4,14 @@ import { ThirdPlaceTable } from '@/components/thirdplace/ThirdPlaceTable';
 import { KnockoutBoard } from '@/components/knockout/KnockoutBoard';
 import { EditableProvider } from '@/components/bracket/EditingContext';
 import { useBracketStore } from '@/store/bracketStore';
+import type { BracketPicks } from '@/lib/types';
 
 interface Props {
   header?: React.ReactNode;
+  results?: BracketPicks | null;
 }
 
-export function BracketEditor({ header }: Props) {
+export function BracketEditor({ header, results = null }: Props) {
   const clearGroups = useBracketStore((s) => s.clearGroups);
   const clearThirdPlace = useBracketStore((s) => s.clearThirdPlace);
   const clearKnockout = useBracketStore((s) => s.clearKnockout);
@@ -39,7 +41,7 @@ export function BracketEditor({ header }: Props) {
   };
 
   return (
-    <EditableProvider>
+    <EditableProvider results={results}>
       <div className="space-y-12">
         {header}
         <section>

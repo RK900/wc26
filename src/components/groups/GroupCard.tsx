@@ -17,12 +17,16 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import clsx from 'clsx';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { TEAMS } from '@/data/teams';
 import { TeamFlag } from '@/components/ui/TeamFlag';
 import { useEditing } from '@/components/bracket/EditingContext';
+import {
+  groupRowCorrectness,
+  type GroupRowCorrectness,
+} from '@/lib/correctness';
 import { useBracketStore } from '@/store/bracketStore';
-import type { GroupDef, GroupOrder, TeamCode } from '@/lib/types';
+import type { BracketPicks, GroupDef, GroupLetter, GroupOrder, TeamCode } from '@/lib/types';
 
 interface Props {
   group: GroupDef;
@@ -33,6 +37,13 @@ interface Props {
 // (1s) — it's just feedback so the action feels responsive.
 const SAVE_PULSE_MS = 300;
 
+const CORRECTNESS_BORDER: Record<GroupRowCorrectness, string> = {
+  correct: 'border-accent/40',
+  near: 'border-warn/40',
+  wrong: 'border-danger/40',
+  unknown: 'border-transparent',
+};
+
 function ordersEqual(a: GroupOrder, b: GroupOrder): boolean {
   for (let i = 0; i < 4; i++) {
     if (a[i] !== b[i]) return false;
@@ -41,7 +52,7 @@ function ordersEqual(a: GroupOrder, b: GroupOrder): boolean {
 }
 
 export function GroupCard({ group }: Props) {
-  const { picks, editable } = useEditing();
+  const { picks, editable, results } = useEditing();
   const { order, committed } = picks.groups[group.letter];
   const setGroupOrder = useBracketStore((s) => s.setGroupOrder);
   const commitGroup = useBracketStore((s) => s.commitGroup);
@@ -85,6 +96,8 @@ export function GroupCard({ group }: Props) {
       {editable ? (
         <SortableList
           items={orderTeams}
+          letter={group.letter}
+          results={results}
           onReorder={(next) => {
             const padded: GroupOrder = [
               next[0] ?? null,
@@ -98,7 +111,14 @@ export function GroupCard({ group }: Props) {
       ) : (
         <ol className="space-y-1.5">
           {orderTeams.map((code, i) => (
-            <StaticTeamRow key={code} code={code} rank={i + 1} />
+            <Fragment key={code}>
+              {i === 2 && <ThirdPlaceDivider />}
+              <StaticTeamRow
+                code={code}
+                rank={i + 1}
+                correctness={groupRowCorrectness(group.letter, code, i, results)}
+              />
+            </Fragment>
           ))}
         </ol>
       )}
@@ -123,9 +143,13 @@ export function GroupCard({ group }: Props) {
 
 function SortableList({
   items,
+  letter,
+  results,
   onReorder,
 }: {
   items: TeamCode[];
+  letter: GroupLetter;
+  results: BracketPicks | null;
   onReorder: (next: TeamCode[]) => void;
 }) {
   const sensors = useSensors(
@@ -148,7 +172,14 @@ function SortableList({
       <SortableContext items={items} strategy={verticalListSortingStrategy}>
         <ol className="space-y-1.5">
           {items.map((code, i) => (
-            <SortableTeamRow key={code} code={code} rank={i + 1} />
+            <Fragment key={code}>
+              {i === 2 && <ThirdPlaceDivider />}
+              <SortableTeamRow
+                code={code}
+                rank={i + 1}
+                correctness={groupRowCorrectness(letter, code, i, results)}
+              />
+            </Fragment>
           ))}
         </ol>
       </SortableContext>
@@ -156,7 +187,19 @@ function SortableList({
   );
 }
 
-function SortableTeamRow({ code, rank }: { code: TeamCode; rank: number }) {
+function ThirdPlaceDivider() {
+  return <li aria-hidden className="my-1.5 h-px bg-border/40" />;
+}
+
+function SortableTeamRow({
+  code,
+  rank,
+  correctness,
+}: {
+  code: TeamCode;
+  rank: number;
+  correctness: GroupRowCorrectness;
+}) {
   const team = TEAMS[code];
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: code,
@@ -170,10 +213,10 @@ function SortableTeamRow({ code, rank }: { code: TeamCode; rank: number }) {
       ref={setNodeRef}
       style={style}
       className={clsx(
-        'flex items-center gap-3 rounded-md px-2 py-2',
+        'flex items-center gap-3 rounded-md border px-2 py-2',
+        CORRECTNESS_BORDER[correctness],
         isDragging && 'z-10 opacity-90 shadow-lg',
         rank <= 2 && 'bg-surface-2',
-        rank === 3 && 'mt-1.5 border-t border-border/40 pt-2.5',
       )}
       {...attributes}
     >
@@ -199,14 +242,22 @@ function SortableTeamRow({ code, rank }: { code: TeamCode; rank: number }) {
   );
 }
 
-function StaticTeamRow({ code, rank }: { code: TeamCode; rank: number }) {
+function StaticTeamRow({
+  code,
+  rank,
+  correctness,
+}: {
+  code: TeamCode;
+  rank: number;
+  correctness: GroupRowCorrectness;
+}) {
   const team = TEAMS[code];
   return (
     <li
       className={clsx(
-        'flex items-center gap-3 rounded-md px-2 py-2',
+        'flex items-center gap-3 rounded-md border px-2 py-2',
+        CORRECTNESS_BORDER[correctness],
         rank <= 2 && 'bg-surface-2',
-        rank === 3 && 'mt-1.5 border-t border-border/40 pt-2.5',
       )}
     >
       <RankBadge rank={rank} />
