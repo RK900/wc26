@@ -13,3 +13,8 @@ dist-ssr/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Local-only Firebase emulator seeding (contains fake-private-key blocks
+# that secret scanners flag even when the key is stub).
+fake-key.json
+seed.sh

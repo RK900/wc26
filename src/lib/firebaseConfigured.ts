@@ -3,6 +3,7 @@
 // lazy chunk used by pool routes only.
 
 export function isFirebaseConfigured(): boolean {
+  if (import.meta.env.DEV) return true;
   return Boolean(
     import.meta.env.VITE_FIREBASE_API_KEY &&
       import.meta.env.VITE_FIREBASE_PROJECT_ID &&

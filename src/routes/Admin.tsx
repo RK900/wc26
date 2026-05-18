@@ -71,7 +71,9 @@ function AdminGate() {
     return <div className="text-muted">Loading…</div>;
   }
 
-  if (!user || user.isAnonymous) {
+  const isDev = import.meta.env.DEV;
+
+  if (!isDev && (!user || user.isAnonymous)) {
     return (
       <div className="mx-auto max-w-md rounded-lg border border-border bg-surface p-8 text-center">
         <h1 className="mb-2 text-xl font-semibold">Admin Sign In</h1>
@@ -102,11 +104,11 @@ function AdminGate() {
     );
   }
 
-  if (adminCheck === 'pending') {
+  if (!isDev && adminCheck === 'pending') {
     return <div className="text-muted">Checking admin status…</div>;
   }
 
-  if (adminCheck === 'denied') {
+  if (!isDev && adminCheck === 'denied') {
     return (
       <div className="mx-auto max-w-md rounded-lg border border-border bg-surface p-8 text-center">
         <h1 className="mb-2 text-xl font-semibold">Not authorized</h1>
@@ -114,7 +116,7 @@ function AdminGate() {
           This account isn't the admin. Your Firebase UID is:
         </p>
         <code className="mb-4 block break-all rounded bg-surface-2 px-3 py-2 text-xs">
-          {user.uid}
+          {user!.uid}
         </code>
         <p className="mb-6 text-xs text-muted">
           If you're bootstrapping admin access, paste this UID into the{' '}
@@ -130,7 +132,9 @@ function AdminGate() {
     );
   }
 
-  return <AdminDashboard user={user} />;
+  const activeUser = isDev ? (user || { email: 'dev-admin@localhost', uid: 'dev-uid' } as User) : user!;
+
+  return <AdminDashboard user={activeUser} />;
 }
 
 interface DashboardProps {

@@ -144,7 +144,9 @@ function accumulateGroupStats(events: EspnEvent[]): Map<TeamCode, TeamStats> {
   }
 
   for (const e of events) {
-    if (!e.status?.type?.completed) continue;
+    // Include both completed and in-progress matches for live standings
+    const state = e.status?.type?.state;
+    if (state !== 'in' && !e.status?.type?.completed) continue;
     if (!isGroupStageEvent(e)) continue;
     const comps = e.competitions?.[0]?.competitors ?? [];
     if (comps.length !== 2) continue;
