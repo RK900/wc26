@@ -14,10 +14,10 @@ service cloud.firestore {
 
     // Bracket submission deadline: 1 hour before the first World Cup 2026
     // match (Mexico kicks off 12:00 PT on 2026-06-11). 11:00 PDT = 18:00
-    // UTC. Server-side enforcement — clients also check, but rules are
-    // the source of truth.
+    // UTC. timestamp.date() is documented as 3-arg (UTC midnight) so we
+    // add an 18h duration to reach 18:00 UTC.
     function beforeSubmitDeadline() {
-      return request.time < timestamp.date(2026, 6, 11, 18, 0, 0);
+      return request.time < timestamp.date(2026, 6, 11) + duration.value(18, 'h');
     }
 
     // Pools — created by anyone authenticated; immutable after creation.
