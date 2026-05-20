@@ -151,32 +151,6 @@ export function Scoring() {
         </div>
       </Section>
 
-      <Section title="Max attainable">
-        <p>
-          Next to your score, you'll see your maximum attainable total. It's your locked-in
-          points plus everything that's still possible — and it drops in two ways:
-        </p>
-        <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm">
-          <li>
-            A game gets scored. Whatever you picked is locked in (right or wrong) and the
-            round's points come off the "still possible" pile.
-          </li>
-          <li>
-            A team you picked to win a later round loses earlier. That pick's points drop off
-            your max immediately.
-          </li>
-        </ol>
-        <p className="mt-3 rounded-md border border-border bg-surface-2 px-3 py-2 text-xs text-muted">
-          Example: you pick Brazil to win the Final. Brazil actually loses in R32.
-          Your max would drop by{' '}
-          <span className="font-mono text-text">
-            {ROUND_POINTS.R32 + ROUND_POINTS.R16 + ROUND_POINTS.QF + ROUND_POINTS.SF + ROUND_POINTS.F}
-          </span>{' '}
-          pts immediately ({ROUND_POINTS.R32} + {ROUND_POINTS.R16} + {ROUND_POINTS.QF} +{' '}
-          {ROUND_POINTS.SF} + {ROUND_POINTS.F}).
-        </p>
-      </Section>
-
       <Section title="Tiebreaker">
         <p>
           If two brackets are tied on points at the end of the tournament, the goals scored in the Final is used as the tiebraker.
