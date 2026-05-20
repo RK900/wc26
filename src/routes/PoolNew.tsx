@@ -12,7 +12,6 @@ export function PoolNew() {
   const [poolName, setPoolName] = useState('');
   const [password, setPassword] = useState('');
   const [creatorName, setCreatorName] = useState('');
-  const [creatorNick, setCreatorNick] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +25,7 @@ export function PoolNew() {
       setError(`Bracket submissions closed at ${formatDeadline()}.`);
       return;
     }
-    if (!poolName.trim() || !password || !creatorName.trim() || !creatorNick.trim()) return;
+    if (!poolName.trim() || !password || !creatorName.trim()) return;
     setBusy(true);
     setError(null);
     try {
@@ -36,7 +35,7 @@ export function PoolNew() {
       const { bracket, editToken } = await createBracket({
         poolId: pool.id,
         name: creatorName.trim(),
-        nickname: creatorNick.trim(),
+        nickname: creatorName.trim(),
         picks,
       });
       saveOwnedBracket(pool.id, {
@@ -115,22 +114,11 @@ export function PoolNew() {
 
         <p className="text-sm font-semibold">Your bracket</p>
 
-        <Field label="Your name">
+        <Field label="Name" hint="Shown to other pool members.">
           <input
             type="text"
             value={creatorName}
             onChange={(e) => setCreatorName(e.target.value)}
-            required
-            maxLength={60}
-            className={inputClass}
-          />
-        </Field>
-
-        <Field label="Nickname" hint="Shown to other pool members.">
-          <input
-            type="text"
-            value={creatorNick}
-            onChange={(e) => setCreatorNick(e.target.value)}
             required
             maxLength={24}
             className={inputClass}

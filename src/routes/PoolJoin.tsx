@@ -19,7 +19,6 @@ export function PoolJoin() {
   const [step, setStep] = useState<'password' | 'profile'>('password');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [nickname, setNickname] = useState('');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -96,7 +95,7 @@ export function PoolJoin() {
 
   const onProfileSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !nickname.trim()) return;
+    if (!name.trim()) return;
     if (isPastDeadline()) {
       setError(`Bracket submissions closed at ${formatDeadline()}.`);
       return;
@@ -108,7 +107,7 @@ export function PoolJoin() {
       const { bracket, editToken } = await createBracket({
         poolId,
         name: name.trim(),
-        nickname: nickname.trim(),
+        nickname: name.trim(),
         picks,
       });
       saveOwnedBracket(poolId, {
@@ -161,25 +160,15 @@ export function PoolJoin() {
 
       {step === 'profile' && (
         <>
-          <p className="mb-6 text-sm text-muted">Enter your name and a nickname for the pool.</p>
+          <p className="mb-6 text-sm text-muted">Enter your name for the pool.</p>
           <form onSubmit={onProfileSubmit} className="space-y-4">
-            <Field label="Your name">
+            <Field label="Name" hint="Shown to other pool members.">
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
                 autoFocus
-                maxLength={60}
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Nickname" hint="Shown to other pool members.">
-              <input
-                type="text"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                required
                 maxLength={24}
                 className={inputClass}
               />
@@ -187,7 +176,7 @@ export function PoolJoin() {
             {error && <ErrorBox message={error} />}
             <button
               type="submit"
-              disabled={busy || !name.trim() || !nickname.trim()}
+              disabled={busy || !name.trim()}
               className="w-full rounded-md bg-accent py-2.5 text-sm font-semibold text-bg disabled:cursor-not-allowed disabled:opacity-50 hover:opacity-90"
             >
               {busy ? 'Creating…' : 'Create my bracket'}
