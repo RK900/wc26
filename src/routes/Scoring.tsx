@@ -153,7 +153,7 @@ export function Scoring() {
 
       <Section title="Tiebreaker">
         <p>
-          If two brackets are tied on points at the end of the tournament, the goals scored in the Final is used as the tiebraker.
+          If two brackets are tied on points at the end of the tournament, the goals scored in the Final is used as the tiebreaker.
         </p>
       </Section>
 
