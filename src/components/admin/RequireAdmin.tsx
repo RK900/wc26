@@ -3,6 +3,32 @@ import { type User } from 'firebase/auth';
 import { isAdminUser, signInAsAdmin, signOutAdmin, subscribeAuth } from '@/lib/adminAuth';
 import { isFirebaseConfigured } from '@/lib/firebaseConfigured';
 
+// Maps Firebase auth error codes to admin-actionable messages. The Google
+// popup itself shows Google's own page (e.g. "the requested action is
+// invalid") which usually means the Google provider / OAuth client for this
+// project is misconfigured; the SDK then rejects with one of these codes.
+function authErrorMessage(e: unknown): string {
+  const code = (e as { code?: string })?.code ?? '';
+  switch (code) {
+    case 'auth/operation-not-allowed':
+      return 'Google sign-in is not enabled for this Firebase project. In the Firebase Console: Authentication → Sign-in method → enable Google, and set a project support email.';
+    case 'auth/unauthorized-domain':
+      return 'This domain is not authorized for sign-in. Add it in Firebase Console → Authentication → Settings → Authorized domains.';
+    case 'auth/popup-blocked':
+      return 'The browser blocked the sign-in popup. Allow popups for this site and try again.';
+    case 'auth/popup-closed-by-user':
+      return 'The sign-in popup closed before completing. If Google showed "the requested action is invalid", the Google provider/OAuth client for this project is misconfigured — enable Google sign-in in Firebase Console and set a project support email.';
+    case 'auth/cancelled-popup-request':
+      return ''; // benign: a second popup superseded the first
+    case 'auth/network-request-failed':
+      return 'Network error reaching Firebase. Check your connection and try again.';
+    default: {
+      const msg = e instanceof Error ? e.message : String(e);
+      return code ? `${msg} (${code})` : msg;
+    }
+  }
+}
+
 // Renders `children` only if the current Firebase user is the configured
 // admin (matched against /admin/config in Firestore). Shows sign-in,
 // pending, or denied UI otherwise. In dev mode, bypasses the check and
@@ -67,7 +93,7 @@ function Gate({ children }: { children: ReactNode }) {
             try {
               await signInAsAdmin();
             } catch (e) {
-              setSignInError(e instanceof Error ? e.message : String(e));
+              setSignInError(authErrorMessage(e));
             } finally {
               setSigningIn(false);
             }

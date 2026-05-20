@@ -38,7 +38,7 @@ export const TEAMS: Record<TeamCode, Team> = {
   NZL: { code: 'NZL', name: 'New Zealand', group: 'G', flag: '🇳🇿' },
   // Group H
   ESP: { code: 'ESP', name: 'Spain', group: 'H', flag: '🇪🇸' },
-  CPV: { code: 'CPV', name: 'Cape Verde', group: 'H', flag: '🇨🇻' },
+  CPV: { code: 'CPV', name: 'Cabo Verde', group: 'H', flag: '🇨🇻' },
   KSA: { code: 'KSA', name: 'Saudi Arabia', group: 'H', flag: '🇸🇦' },
   URU: { code: 'URU', name: 'Uruguay', group: 'H', flag: '🇺🇾' },
   // Group I
