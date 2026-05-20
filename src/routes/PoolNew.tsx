@@ -97,10 +97,7 @@ export function PoolNew() {
           />
         </Field>
 
-        <Field
-          label="Pool password"
-          hint="Casual gate only — share with people you want in the pool. Don't reuse a real password."
-        >
+        <Field label="Pool password">
           <input
             type="password"
             value={password}
