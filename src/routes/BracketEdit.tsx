@@ -5,7 +5,7 @@ import { getBracket, updateBracketPicks, verifyBracketToken } from '@/lib/bracke
 import { getPool } from '@/lib/poolApi';
 import { formatDeadline, isPastDeadline } from '@/lib/deadline';
 import { subscribeResults } from '@/lib/resultsApi';
-import { MAX_SCORE, maxAttainable, scoreBracket } from '@/lib/scoring';
+import { scoreBracket } from '@/lib/scoring';
 import { useBracketStore } from '@/store/bracketStore';
 import { BracketEditor } from '@/components/bracket/BracketEditor';
 import { BracketViewer } from '@/components/bracket/BracketViewer';
@@ -123,11 +123,8 @@ export function BracketEdit() {
   const livePicks: BracketPicks | null = editable ? picks : bracket?.picks ?? null;
   const score = useMemo(() => {
     if (!livePicks) return null;
-    if (!results) return { current: 0, max: MAX_SCORE };
-    return {
-      current: scoreBracket(livePicks, results.picks).total,
-      max: maxAttainable(livePicks, results.picks),
-    };
+    if (!results) return { current: 0 };
+    return { current: scoreBracket(livePicks, results.picks).total };
   }, [livePicks, results]);
 
   if (loading) return <div className="text-muted">Loading bracket…</div>;
@@ -149,7 +146,7 @@ export function BracketEdit() {
             <PoolChip poolId={pool.id} poolName={pool.name} />
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <h1 className="text-2xl font-semibold">{bracket.nickname}&rsquo;s bracket</h1>
-              {score && <ScoreBadge current={score.current} max={score.max} />}
+              {score && <ScoreBadge current={score.current} />}
             </div>
             <p className="text-sm text-muted">
               {submittedDate ? (
@@ -183,7 +180,7 @@ export function BracketEdit() {
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <h1 className="text-xl font-semibold">{bracket.nickname}&rsquo;s bracket</h1>
               <div className="flex items-center gap-3">
-                {score && <ScoreBadge current={score.current} max={score.max} />}
+                {score && <ScoreBadge current={score.current} />}
                 <SaveIndicator status={saveStatus} />
               </div>
             </div>
@@ -232,15 +229,14 @@ function SaveIndicator({ status }: { status: 'idle' | 'saving' | 'saved' | 'erro
   return <span className={`text-xs ${colorClass}`}>{text}</span>;
 }
 
-function ScoreBadge({ current, max }: { current: number; max: number }) {
+function ScoreBadge({ current }: { current: number }) {
   return (
     <div
       className="inline-flex items-baseline gap-1.5 rounded-md border border-border bg-surface-2 px-3 py-1.5"
-      title={`${current} earned, max attainable ${max}. Max drops as your picks are eliminated.`}
+      title={`${current} points earned so far`}
     >
       <span className="text-[10px] font-bold uppercase tracking-widest text-muted">Points</span>
       <span className="font-mono text-base font-semibold text-text">{current}</span>
-      <span className="font-mono text-xs text-muted">/ {max}</span>
     </div>
   );
 }

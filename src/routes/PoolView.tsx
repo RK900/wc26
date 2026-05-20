@@ -4,14 +4,13 @@ import { ensureSignedIn, isFirebaseConfigured } from '@/lib/firebase';
 import { subscribeToPoolBracketsFull } from '@/lib/bracketApi';
 import { getPool } from '@/lib/poolApi';
 import { subscribeResults } from '@/lib/resultsApi';
-import { MAX_SCORE, maxAttainable, scoreBracket } from '@/lib/scoring';
+import { scoreBracket } from '@/lib/scoring';
 import { getOwnedBracket } from '@/lib/localStore';
 import type { Bracket, Pool, ResultsDoc } from '@/lib/types';
 
 interface LeaderboardRow {
   bracket: Bracket;
   score: number | null;
-  max: number;
 }
 
 export function PoolView() {
@@ -59,7 +58,6 @@ export function PoolView() {
     const list = brackets.map((b): LeaderboardRow => ({
       bracket: b,
       score: results ? scoreBracket(b.picks, results.picks).total : null,
-      max: results ? maxAttainable(b.picks, results.picks) : MAX_SCORE,
     }));
     // Tiebreaker: when scores are equal, the bracket whose final-goals
     // guess is closer to the actual final-goals count wins. Falls back
@@ -97,12 +95,7 @@ export function PoolView() {
         <h1 className="text-2xl font-semibold">{pool.name}</h1>
         <p className="mt-1 text-sm text-muted">
           {brackets.length} {brackets.length === 1 ? 'bracket' : 'brackets'}
-          {hasResults && (
-            <>
-              {' · scoring live · '}
-              <span className="text-accent">max {MAX_SCORE}</span>
-            </>
-          )}
+          {hasResults && <span className="text-accent">{' · scoring live'}</span>}
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           {owned ? (
@@ -170,7 +163,6 @@ export function PoolView() {
                       <span className="text-base font-semibold text-text">
                         {row.score ?? 0}
                       </span>
-                      <span className="text-xs text-muted"> / {row.max}</span>
                     </span>
                   </Link>
                 </li>
