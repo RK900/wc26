@@ -14,13 +14,6 @@ export function generateSaltB64(): string {
   return bytesToB64(bytes);
 }
 
-export function generateTokenB64(): string {
-  const bytes = new Uint8Array(24);
-  crypto.getRandomValues(bytes);
-  // URL-safe base64
-  return bytesToB64(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
 export async function hashWithSalt(plaintext: string, saltB64: string): Promise<string> {
   const enc = new TextEncoder();
   const data = enc.encode(saltB64 + ':' + plaintext);

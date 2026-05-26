@@ -35,7 +35,6 @@ interface BracketState {
   picks: BracketPicks;
   poolId: string | null;
   bracketId: string | null;
-  editToken: string | null;
 
   setGroupOrder: (g: GroupLetter, order: GroupOrder) => void;
   commitGroup: (g: GroupLetter) => void;
@@ -58,7 +57,6 @@ export const useBracketStore = create<BracketState>()(
       picks: initialPicks(),
       poolId: null,
       bracketId: null,
-      editToken: null,
 
       setGroupOrder: (g, order) =>
         set((state) => ({
@@ -119,7 +117,6 @@ export const useBracketStore = create<BracketState>()(
           picks: initialPicks(),
           poolId: null,
           bracketId: null,
-          editToken: null,
         }),
 
       // Clearing predictions un-submits the bracket. Submit was "one-way"

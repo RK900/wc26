@@ -1,16 +1,20 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ensureSignedIn, isFirebaseConfigured } from '@/lib/firebase';
 import { formatDeadline, isPastDeadline } from '@/lib/deadline';
 import { getPool, verifyPoolPassword } from '@/lib/poolApi';
-import { createBracket } from '@/lib/bracketApi';
-import { getOwnedBracket, saveOwnedBracket } from '@/lib/localStore';
+import { createBracket, getBracket } from '@/lib/bracketApi';
+import { isSignedIn, signInWithGoogle, useAuthStore } from '@/store/authStore';
 import { useBracketStore } from '@/store/bracketStore';
 import type { Pool } from '@/lib/types';
 
 export function PoolJoin() {
   const { id: poolId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
+  const user = useAuthStore((s) => s.user);
+  const authReady = useAuthStore((s) => s.ready);
+  const signedIn = isSignedIn(user);
 
   const [pool, setPool] = useState<Pool | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,7 +34,7 @@ export function PoolJoin() {
     }
     (async () => {
       try {
-        await ensureSignedIn();
+        await ensureSignedIn(); // anonymous session is enough to read the pool
         const p = await getPool(poolId);
         if (!p) {
           setError('Pool not found.');
@@ -38,21 +42,39 @@ export function PoolJoin() {
           return;
         }
         setPool(p);
-        const existing = getOwnedBracket(poolId);
-        if (existing) {
-          navigate(
-            `/pool/${poolId}/bracket/${existing.bracketId}?token=${existing.editToken}`,
-            { replace: true },
-          );
-          return;
-        }
         setLoading(false);
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
         setLoading(false);
       }
     })();
-  }, [poolId, navigate]);
+  }, [poolId]);
+
+  // If the signed-in user already has a bracket in this pool, skip straight
+  // to it (no need to re-enter the password). Runs on mount if already
+  // signed in, and again right after they sign in during the flow.
+  useEffect(() => {
+    if (!poolId || !signedIn || !user) return;
+    let cancelled = false;
+    (async () => {
+      const existing = await getBracket(poolId, user.uid);
+      if (!cancelled && existing) {
+        navigate(`/pool/${poolId}/bracket/${user.uid}`, { replace: true });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [poolId, signedIn, user, navigate]);
+
+  // Prefill the display name from Google once, then leave it editable.
+  const prefilled = useRef(false);
+  useEffect(() => {
+    if (!prefilled.current && signedIn && user?.displayName) {
+      setName(user.displayName);
+      prefilled.current = true;
+    }
+  }, [signedIn, user]);
 
   if (loading) return <div className="text-muted">Loading pool…</div>;
   if (error) return <ErrorBox message={error} />;
@@ -93,8 +115,24 @@ export function PoolJoin() {
     setStep('profile');
   };
 
+  const onSignIn = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await signInWithGoogle();
+    } catch {
+      // Benign (popup closed/blocked) — the button just resets.
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const onProfileSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!signedIn || !user) {
+      setError('Please sign in with Google first.');
+      return;
+    }
     if (!name.trim()) return;
     if (isPastDeadline()) {
       setError(`Bracket submissions closed at ${formatDeadline()}.`);
@@ -103,25 +141,23 @@ export function PoolJoin() {
     setBusy(true);
     setError(null);
     try {
+      // Guard against the async "already joined" redirect not having fired
+      // yet — never overwrite an existing bracket; open it instead.
+      const existing = await getBracket(poolId, user.uid);
+      if (existing) {
+        navigate(`/pool/${poolId}/bracket/${user.uid}`);
+        return;
+      }
       const picks = useBracketStore.getState().picks;
-      const { bracket, editToken } = await createBracket({
+      const bracket = await createBracket({
         poolId,
-        name: name.trim(),
+        poolName: pool.name,
+        ownerUid: user.uid,
         nickname: name.trim(),
         picks,
       });
-      saveOwnedBracket(poolId, {
-        bracketId: bracket.id,
-        editToken,
-        poolName: pool.name,
-        nickname: bracket.nickname,
-      });
-      useBracketStore.setState({
-        poolId,
-        bracketId: bracket.id,
-        editToken,
-      });
-      navigate(`/pool/${poolId}/bracket/${bracket.id}?token=${editToken}`);
+      useBracketStore.setState({ poolId, bracketId: bracket.id });
+      navigate(`/pool/${poolId}/bracket/${bracket.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setBusy(false);
@@ -160,28 +196,53 @@ export function PoolJoin() {
 
       {step === 'profile' && (
         <>
-          <p className="mb-6 text-sm text-muted">Enter your name for the pool.</p>
-          <form onSubmit={onProfileSubmit} className="space-y-4">
-            <Field label="Name" hint="Shown to other pool members.">
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                autoFocus
-                maxLength={24}
-                className={inputClass}
-              />
-            </Field>
-            {error && <ErrorBox message={error} />}
-            <button
-              type="submit"
-              disabled={busy || !name.trim()}
-              className="w-full rounded-md bg-accent py-2.5 text-sm font-semibold text-bg disabled:cursor-not-allowed disabled:opacity-50 hover:opacity-90"
-            >
-              {busy ? 'Creating…' : 'Create my bracket'}
-            </button>
-          </form>
+          {!authReady ? (
+            <p className="text-sm text-muted">Loading…</p>
+          ) : signedIn ? (
+            <>
+              <p className="mb-6 text-sm text-muted">
+                Signed in as {user?.email ?? user?.displayName}. Your bracket saves to this
+                account, so you can edit it from any device.
+              </p>
+              <form onSubmit={onProfileSubmit} className="space-y-4">
+                <Field label="Name" hint="Shown to other pool members.">
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    autoFocus
+                    maxLength={24}
+                    className={inputClass}
+                  />
+                </Field>
+                {error && <ErrorBox message={error} />}
+                <button
+                  type="submit"
+                  disabled={busy || !name.trim()}
+                  className="w-full rounded-md bg-accent py-2.5 text-sm font-semibold text-bg disabled:cursor-not-allowed disabled:opacity-50 hover:opacity-90"
+                >
+                  {busy ? 'Creating…' : 'Create my bracket'}
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <p className="mb-6 text-sm text-muted">
+                Sign in with Google to join. Your bracket saves to your account so you can edit
+                it from any device.
+              </p>
+              {error && <ErrorBox message={error} />}
+              <button
+                type="button"
+                onClick={onSignIn}
+                disabled={busy}
+                className="w-full rounded-md bg-accent py-2.5 text-sm font-semibold text-bg disabled:cursor-not-allowed disabled:opacity-50 hover:opacity-90"
+              >
+                {busy ? 'Signing in…' : 'Sign in with Google'}
+              </button>
+            </>
+          )}
         </>
       )}
     </div>

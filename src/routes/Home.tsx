@@ -1,13 +1,32 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { isFirebaseConfigured } from '@/lib/firebaseConfigured';
-import { listOwnedBrackets, type OwnedBracketEntry } from '@/lib/localStore';
+import { listBracketsForUser } from '@/lib/bracketApi';
+import { isSignedIn, useAuthStore } from '@/store/authStore';
+import type { Bracket } from '@/lib/types';
 
 export function Home() {
-  const [owned, setOwned] = useState<{ poolId: string; entry: OwnedBracketEntry }[]>([]);
+  const user = useAuthStore((s) => s.user);
+  const signedIn = isSignedIn(user);
+  const [owned, setOwned] = useState<Bracket[]>([]);
+
   useEffect(() => {
-    setOwned(listOwnedBrackets());
-  }, []);
+    if (!signedIn || !user) {
+      setOwned([]);
+      return;
+    }
+    let cancelled = false;
+    listBracketsForUser(user.uid)
+      .then((bs) => {
+        if (!cancelled) setOwned(bs);
+      })
+      .catch(() => {
+        if (!cancelled) setOwned([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [signedIn, user]);
 
   const configured = isFirebaseConfigured();
 
@@ -16,8 +35,8 @@ export function Home() {
       <section className="rounded-lg border border-border bg-surface p-8 text-center">
         <h1 className="mb-3 text-3xl font-semibold">Build your World Cup 2026 bracket</h1>
         <p className="mx-auto mb-6 max-w-lg text-muted">
-          Create a pool with friends and compete with predictions for all 48 teams. No signup,
-          no email — just a pool name, password, and a shareable link.
+          Create a pool with friends and compete with predictions for all 48 teams. Sign in with
+          Google and your bracket saves to your account — pick up and edit it from any device.
         </p>
         {configured ? (
           <>
@@ -57,18 +76,18 @@ export function Home() {
         )}
       </section>
 
-      {owned.length > 0 && (
+      {signedIn && owned.length > 0 && (
         <section>
           <h2 className="mb-4 text-lg font-semibold">Your brackets</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {owned.map(({ poolId, entry }) => (
+            {owned.map((b) => (
               <Link
-                key={poolId}
-                to={`/pool/${poolId}/bracket/${entry.bracketId}?token=${entry.editToken}`}
+                key={`${b.poolId}/${b.id}`}
+                to={`/pool/${b.poolId}/bracket/${b.id}`}
                 className="rounded-md border border-border bg-surface p-4 transition hover:border-accent/50"
               >
-                <div className="text-sm font-semibold">{entry.poolName}</div>
-                <div className="mt-1 text-xs text-muted">as {entry.nickname}</div>
+                <div className="text-sm font-semibold">{b.poolName || 'Pool'}</div>
+                <div className="mt-1 text-xs text-muted">as {b.nickname}</div>
               </Link>
             ))}
           </div>

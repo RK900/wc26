@@ -5,7 +5,7 @@ import { subscribeToPoolBracketsFull } from '@/lib/bracketApi';
 import { getPool } from '@/lib/poolApi';
 import { subscribeResults } from '@/lib/resultsApi';
 import { scoreBracket } from '@/lib/scoring';
-import { getOwnedBracket } from '@/lib/localStore';
+import { isSignedIn, useAuthStore } from '@/store/authStore';
 import type { Bracket, Pool, ResultsDoc } from '@/lib/types';
 
 interface LeaderboardRow {
@@ -15,6 +15,7 @@ interface LeaderboardRow {
 
 export function PoolView() {
   const { id: poolId } = useParams<{ id: string }>();
+  const user = useAuthStore((s) => s.user);
   const [pool, setPool] = useState<Pool | null>(null);
   const [brackets, setBrackets] = useState<Bracket[]>([]);
   const [results, setResults] = useState<ResultsDoc | null>(null);
@@ -85,7 +86,9 @@ export function PoolView() {
     return <div className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</div>;
   if (!pool || !poolId) return null;
 
-  const owned = getOwnedBracket(poolId);
+  // A bracket's doc id is its owner's uid, so "mine" is just id === my uid.
+  const myUid = isSignedIn(user) ? user.uid : null;
+  const myBracket = myUid ? brackets.find((b) => b.id === myUid) : undefined;
   const joinUrl = `${window.location.origin}${import.meta.env.BASE_URL}pool/${poolId}/join`;
   const hasResults = results !== null;
 
@@ -98,9 +101,9 @@ export function PoolView() {
           {hasResults && <span className="text-accent">{' · scoring live'}</span>}
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          {owned ? (
+          {myBracket ? (
             <Link
-              to={`/pool/${poolId}/bracket/${owned.bracketId}?token=${owned.editToken}`}
+              to={`/pool/${poolId}/bracket/${myBracket.id}`}
               className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-bg hover:opacity-90"
             >
               Edit your bracket
@@ -133,10 +136,8 @@ export function PoolView() {
           <ul className="space-y-2">
             {rows.map((row, i) => {
               const m = row.bracket;
-              const isMine = owned?.bracketId === m.id;
-              const url = isMine
-                ? `/pool/${poolId}/bracket/${m.id}?token=${owned!.editToken}`
-                : `/pool/${poolId}/bracket/${m.id}`;
+              const isMine = myUid != null && m.id === myUid;
+              const url = `/pool/${poolId}/bracket/${m.id}`;
               return (
                 <li key={m.id}>
                   <Link

@@ -69,22 +69,17 @@ export interface Pool {
 }
 
 export interface Bracket {
-  id: string;
+  id: string; // Firestore doc ID — equals ownerUid (one bracket per user per pool).
   poolId: string;
-  name: string;
+  ownerUid: string; // Google account that owns/edits this bracket.
   nickname: string;
-  ownerTokenHash: string;
-  ownerTokenSalt: string;
+  // Denormalized pool name (pools are immutable, so it can't go stale). Lets
+  // the "your brackets" list show pool names from a single collection-group
+  // query without an extra read per pool.
+  poolName: string;
   picks: BracketPicks;
   updatedAt: number;
   finalizedAt: number | null;
-}
-
-export interface BracketSummary {
-  id: string;
-  nickname: string;
-  finalizedAt: number | null;
-  updatedAt: number;
 }
 
 // Canonical tournament results — same shape as a bracket, but represents

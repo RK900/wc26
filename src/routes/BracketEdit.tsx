@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { ensureSignedIn, isFirebaseConfigured } from '@/lib/firebase';
-import { getBracket, updateBracketPicks, verifyBracketToken } from '@/lib/bracketApi';
+import { getBracket, updateBracketPicks } from '@/lib/bracketApi';
 import { getPool } from '@/lib/poolApi';
 import { formatDeadline, isPastDeadline } from '@/lib/deadline';
 import { subscribeResults } from '@/lib/resultsApi';
 import { scoreBracket } from '@/lib/scoring';
+import { isSignedIn, useAuthStore } from '@/store/authStore';
 import { useBracketStore } from '@/store/bracketStore';
 import { BracketEditor } from '@/components/bracket/BracketEditor';
 import { BracketViewer } from '@/components/bracket/BracketViewer';
@@ -16,8 +17,8 @@ const SAVE_DEBOUNCE_MS = 1000;
 
 export function BracketEdit() {
   const { id: poolId, bracketId } = useParams<{ id: string; bracketId: string }>();
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
+  const user = useAuthStore((s) => s.user);
+  const authReady = useAuthStore((s) => s.ready);
 
   const [pool, setPool] = useState<Pool | null>(null);
   const [bracket, setBracket] = useState<Bracket | null>(null);
@@ -43,9 +44,10 @@ export function BracketEdit() {
       return;
     }
     initialLoadDone.current = false;
+    setLoading(true);
     (async () => {
       try {
-        await ensureSignedIn();
+        await ensureSignedIn(); // anonymous session is enough to read a bracket
         const [p, b] = await Promise.all([getPool(poolId), getBracket(poolId, bracketId)]);
         if (!p || !b) {
           setError('Pool or bracket not found.');
@@ -54,21 +56,6 @@ export function BracketEdit() {
         }
         setPool(p);
         setBracket(b);
-        const tokenValid = token ? await verifyBracketToken(b, token) : false;
-        const canEdit = tokenValid && !isPastDeadline();
-        setEditable(canEdit);
-        if (canEdit) {
-          // Hydrate the store from Firestore only if we don't already have this bracket loaded.
-          const storeBracketId = useBracketStore.getState().bracketId;
-          if (storeBracketId !== bracketId) {
-            useBracketStore.setState({
-              picks: b.picks,
-              poolId,
-              bracketId,
-              editToken: token,
-            });
-          }
-        }
         initialLoadDone.current = true;
         setLoading(false);
       } catch (err) {
@@ -76,7 +63,29 @@ export function BracketEdit() {
         setLoading(false);
       }
     })();
-  }, [poolId, bracketId, token]);
+  }, [poolId, bracketId]);
+
+  // Editable iff the signed-in Google user owns this bracket and the deadline
+  // hasn't passed. Recomputed when the bracket loads or the user signs in/out.
+  useEffect(() => {
+    if (!bracket) {
+      setEditable(false);
+      return;
+    }
+    const canEdit = isSignedIn(user) && bracket.ownerUid === user.uid && !isPastDeadline();
+    setEditable(canEdit);
+    if (canEdit) {
+      // Hydrate the store from Firestore only if we don't already have this bracket loaded.
+      const storeBracketId = useBracketStore.getState().bracketId;
+      if (storeBracketId !== bracket.id) {
+        useBracketStore.setState({
+          picks: bracket.picks,
+          poolId: bracket.poolId,
+          bracketId: bracket.id,
+        });
+      }
+    }
+  }, [bracket, user]);
 
   // Debounced auto-save when picks change in editable mode.
   useEffect(() => {
@@ -127,9 +136,9 @@ export function BracketEdit() {
     return { current: scoreBracket(livePicks, results.picks).total };
   }, [livePicks, results]);
 
-  if (loading) return <div className="text-muted">Loading bracket…</div>;
   if (error)
     return <div className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</div>;
+  if (loading || !authReady) return <div className="text-muted">Loading bracket…</div>;
   if (!pool || !bracket || !poolId) return null;
 
   if (!editable) {
@@ -166,10 +175,6 @@ export function BracketEdit() {
     );
   }
 
-  const editLinkUrl = token
-    ? `${window.location.origin}${import.meta.env.BASE_URL}pool/${poolId}/bracket/${bracketId}?token=${token}`
-    : null;
-
   return (
     <>
       <BracketEditor
@@ -184,39 +189,11 @@ export function BracketEdit() {
                 <SaveIndicator status={saveStatus} />
               </div>
             </div>
-            {editLinkUrl && <CopyEditLink url={editLinkUrl} />}
           </header>
         }
       />
       <FinalizeBar />
     </>
-  );
-}
-
-function CopyEditLink({ url }: { url: string }) {
-  const [copied, setCopied] = useState(false);
-  const onCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      // ignore (clipboard may be unavailable)
-    }
-  };
-  return (
-    <div className="flex items-center gap-2 rounded-md border border-warn/30 bg-warn/10 px-3 py-2 text-xs text-warn">
-      <span className="flex-1">
-        <strong>Bookmark this edit link.</strong> Without it, you won&rsquo;t be able to edit your bracket from another device.
-      </span>
-      <button
-        type="button"
-        onClick={onCopy}
-        className="shrink-0 rounded border border-warn/40 bg-warn/10 px-2.5 py-1 font-medium hover:bg-warn/20"
-      >
-        {copied ? 'Copied!' : 'Copy link'}
-      </button>
-    </div>
   );
 }
 
@@ -255,4 +232,3 @@ function PoolChip({ poolId, poolName }: { poolId: string; poolName: string }) {
     </Link>
   );
 }
-
