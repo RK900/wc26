@@ -58,7 +58,10 @@ export function Home() {
             >
               Create a pool
             </Link>
-            <Link to="/preview" className="text-sm font-medium text-muted hover:text-text">
+            <Link
+              to="/preview"
+              className="rounded-md border border-border bg-surface-2 px-5 py-2.5 text-sm font-semibold hover:border-accent/40"
+            >
               Preview the bracket
             </Link>
           </div>
