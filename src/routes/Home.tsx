@@ -32,31 +32,40 @@ export function Home() {
 
   return (
     <div className="space-y-12">
-      <section className="rounded-lg border border-border bg-surface p-8 text-center">
-        <h1 className="mb-3 text-3xl font-semibold">Build your World Cup 2026 bracket</h1>
-        <p className="mx-auto mb-6 max-w-lg text-muted">
-          Create a pool with friends and compete with predictions for all 48 teams. Sign in with
-          Google and your bracket saves to your account — pick up and edit it from any device.
-        </p>
-        {configured ? (
-          <>
-            <div className="flex flex-wrap justify-center gap-3">
-              <Link
-                to="/pool/new"
-                className="rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-bg hover:opacity-90"
-              >
-                Create a pool
-              </Link>
-              <Link
-                to="/preview"
-                className="rounded-md border border-border bg-surface-2 px-5 py-2.5 text-sm font-semibold hover:bg-surface-2/80"
-              >
-                Preview the bracket
-              </Link>
-            </div>
+      {configured ? (
+        <section className="rounded-lg border border-border bg-surface p-8">
+          <div className="mx-auto max-w-lg text-center">
+            <h1 className="mb-2 text-3xl font-semibold">World Cup 2026 Bracket Challenge</h1>
+            <p className="text-muted">Predict all 48 teams. Beat your friends.</p>
+          </div>
+
+          {/* Primary action: join a pool you were invited to. */}
+          <div className="mx-auto mt-8 max-w-md">
             <JoinExistingPool />
-          </>
-        ) : (
+          </div>
+
+          <div className="mx-auto mt-7 flex max-w-md items-center gap-3 text-xs uppercase tracking-wider text-muted">
+            <span className="h-px flex-1 bg-border" />
+            or
+            <span className="h-px flex-1 bg-border" />
+          </div>
+
+          {/* Secondary actions. */}
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-5">
+            <Link
+              to="/pool/new"
+              className="rounded-md border border-border bg-surface-2 px-5 py-2.5 text-sm font-semibold hover:border-accent/40"
+            >
+              Create a pool
+            </Link>
+            <Link to="/preview" className="text-sm font-medium text-muted hover:text-text">
+              Preview the bracket
+            </Link>
+          </div>
+        </section>
+      ) : (
+        <section className="rounded-lg border border-border bg-surface p-8 text-center">
+          <h1 className="mb-3 text-3xl font-semibold">World Cup 2026 Bracket Challenge</h1>
           <div className="mx-auto max-w-md space-y-3">
             <div className="rounded-md border border-warn/40 bg-warn/10 px-4 py-3 text-left text-sm text-warn">
               <p className="font-semibold">Firebase isn't configured yet.</p>
@@ -73,8 +82,8 @@ export function Home() {
               Preview the bracket (browser-only)
             </Link>
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       {signedIn && owned.length > 0 && (
         <section>
@@ -114,9 +123,9 @@ function JoinExistingPool() {
   };
 
   return (
-    <form onSubmit={onSubmit} className="mx-auto mt-6 flex max-w-md flex-col gap-2 text-left">
-      <label className="text-xs font-medium uppercase tracking-wider text-muted">
-        Or join an existing pool
+    <form onSubmit={onSubmit} className="text-left">
+      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">
+        Join a pool
       </label>
       <div className="flex gap-2">
         <input
@@ -124,17 +133,20 @@ function JoinExistingPool() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Paste join link or pool ID"
-          className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-sm focus:border-accent focus:outline-none"
+          className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2.5 text-sm focus:border-accent focus:outline-none"
         />
         <button
           type="submit"
           disabled={!input.trim()}
-          className="rounded-md border border-border bg-surface-2 px-4 py-2 text-sm font-semibold hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-md bg-accent px-6 py-2.5 text-sm font-semibold text-bg hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Go
+          Join
         </button>
       </div>
-      {error && <p className="text-xs text-danger">{error}</p>}
+      {error && <p className="mt-2 text-xs text-danger">{error}</p>}
+      <p className="mt-2 text-xs text-muted">
+        Someone shared a pool with you? Paste the link or ID to join.
+      </p>
     </form>
   );
 }
