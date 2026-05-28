@@ -30,6 +30,10 @@ export function BracketEdit() {
 
   const picks = useBracketStore((s) => s.picks);
   const initialLoadDone = useRef(false);
+  // Which bracket id the store has been hydrated from THIS mount. Gates
+  // autosave so we never write a stale/persisted store over the server copy
+  // before pulling the server's picks in. Reset on every fresh load.
+  const hydratedFor = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
@@ -44,6 +48,7 @@ export function BracketEdit() {
       return;
     }
     initialLoadDone.current = false;
+    hydratedFor.current = null;
     setLoading(true);
     (async () => {
       try {
@@ -74,22 +79,28 @@ export function BracketEdit() {
     }
     const canEdit = isSignedIn(user) && bracket.ownerUid === user.uid && !isPastDeadline();
     setEditable(canEdit);
-    if (canEdit) {
-      // Hydrate the store from Firestore only if we don't already have this bracket loaded.
-      const storeBracketId = useBracketStore.getState().bracketId;
-      if (storeBracketId !== bracket.id) {
-        useBracketStore.setState({
-          picks: bracket.picks,
-          poolId: bracket.poolId,
-          bracketId: bracket.id,
-        });
-      }
+    // Hydrate the store from the freshly-loaded server bracket exactly once
+    // per load. Keying on a per-mount ref (not the persisted store's
+    // bracketId) means a fresh open ALWAYS pulls server truth in before any
+    // autosave — a stale or reset store can never overwrite the server. The
+    // once-guard prevents a mid-edit re-run (e.g. token refresh firing this
+    // effect) from reverting in-progress edits to the loaded snapshot.
+    if (canEdit && hydratedFor.current !== bracket.id) {
+      useBracketStore.setState({
+        picks: bracket.picks,
+        poolId: bracket.poolId,
+        bracketId: bracket.id,
+      });
+      hydratedFor.current = bracket.id;
     }
   }, [bracket, user]);
 
   // Debounced auto-save when picks change in editable mode.
   useEffect(() => {
     if (!editable || !bracket || !initialLoadDone.current) return;
+    // Never autosave until the store has been hydrated from the server copy
+    // of THIS bracket — otherwise a stale store could overwrite real picks.
+    if (hydratedFor.current !== bracket.id) return;
     // Defensive re-check: if the deadline passed mid-session, lock the
     // editor and skip this save. The polling effect below flips editable
     // to false within ~30s but a save could otherwise race past it.

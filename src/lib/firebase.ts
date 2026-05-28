@@ -1,5 +1,11 @@
 import { getApps, initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, signInAnonymously, connectAuthEmulator, type Auth } from 'firebase/auth';
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInAnonymously,
+  connectAuthEmulator,
+  type Auth,
+} from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator, type Firestore } from 'firebase/firestore';
 import { isFirebaseConfigured } from '@/lib/firebaseConfigured';
 
@@ -59,9 +65,30 @@ export function getFirebase(): FirebaseHandles {
 }
 
 let signInPromise: Promise<void> | null = null;
+let initialAuthPromise: Promise<void> | null = null;
+
+// Resolves once Firebase has reported its initial (persisted) auth state.
+// Critical: on a fresh page load a Google session is restored from storage
+// asynchronously, so auth.currentUser is null for a beat. Without waiting,
+// ensureSignedIn would create a throwaway anonymous session and clobber the
+// restoring Google sign-in — silently logging the user out.
+function waitForInitialAuth(auth: Auth): Promise<void> {
+  if (!initialAuthPromise) {
+    initialAuthPromise = new Promise<void>((resolve) => {
+      const unsub = onAuthStateChanged(auth, () => {
+        unsub();
+        resolve();
+      });
+    });
+  }
+  return initialAuthPromise;
+}
 
 export async function ensureSignedIn(): Promise<void> {
   const { auth } = getFirebase();
+  // Let any persisted session restore first; only fall back to anonymous if
+  // nobody is actually signed in.
+  await waitForInitialAuth(auth);
   if (auth.currentUser) return;
   if (!signInPromise) {
     signInPromise = signInAnonymously(auth)
