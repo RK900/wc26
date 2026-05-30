@@ -110,6 +110,14 @@ export function BracketEdit() {
     }
     setSaveStatus('saving');
     const t = setTimeout(() => {
+      // Re-check at fire time too: a pick made <1s before the deadline
+      // would otherwise reach the server, which would correctly reject the
+      // write — but the UI would flash "Save failed". Locking client-side
+      // means the locked-viewer state is the only thing the user sees.
+      if (isPastDeadline()) {
+        setEditable(false);
+        return;
+      }
       updateBracketPicks({ bracket, picks })
         .then(() => setSaveStatus('saved'))
         .catch((err) => {

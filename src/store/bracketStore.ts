@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { GROUPS } from '@/data/groups';
 import { applyCascade } from '@/lib/cascade';
 import { isComplete } from '@/lib/completeness';
+import { isPastDeadline } from '@/lib/deadline';
 import type {
   BracketPicks,
   GroupLetter,
@@ -107,6 +108,10 @@ export const useBracketStore = create<BracketState>()(
       finalize: () =>
         set((state) => {
           if (!isComplete(state.picks)) return {};
+          // Submitting is a write — refuse it past the deadline so a click
+          // in the gap between the deadline crossing and the 30s poll firing
+          // doesn't flash "Submitted" before the editor locks.
+          if (isPastDeadline()) return {};
           return {
             picks: { ...state.picks, finalizedAt: Date.now() },
           };
