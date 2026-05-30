@@ -9,7 +9,7 @@ import { TeamFlag } from '@/components/ui/TeamFlag';
 import { applyCascade } from '@/lib/cascade';
 import { resolveSlot } from '@/lib/resolveBracket';
 import { mapThirdPlaceAdvancers } from '@/lib/thirdPlaceMap';
-import { MAX_SCORE, maxAttainable, scoreBracket } from '@/lib/scoring';
+import { scoreBracket } from '@/lib/scoring';
 import type {
   BracketPicks,
   GroupLetter,
@@ -147,7 +147,6 @@ function SmokeContent() {
     const rows = brackets.map((b) => ({
       b,
       score: scoreBracket(b.picks, results).total,
-      max: maxAttainable(b.picks, results),
     }));
     const actualGoals = results.finalGoalsGuess ?? null;
     const goalDiff = (guess: number | null | undefined): number => {
@@ -211,11 +210,7 @@ function SmokeContent() {
                   </span>
                 </span>
                 <span className="font-mono">
-                  <span className="text-base font-semibold">{row.score}</span>
-                  <span className="text-xs text-muted"> / {row.max}</span>
-                  <span className="ml-2 text-[10px] text-muted">
-                    ceiling {MAX_SCORE}
-                  </span>
+                  <span className="text-base font-semibold text-text">{row.score}</span>
                 </span>
               </li>
             );
