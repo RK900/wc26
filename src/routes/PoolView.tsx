@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ensureSignedIn, isFirebaseConfigured } from '@/lib/firebase';
+import { isPastDeadline } from '@/lib/deadline';
 import { subscribeToPoolBracketsFull } from '@/lib/bracketApi';
 import { getPool } from '@/lib/poolApi';
 import { subscribeResults } from '@/lib/resultsApi';
@@ -106,7 +107,7 @@ export function PoolView() {
               to={`/pool/${poolId}/bracket/${myBracket.id}`}
               className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-bg hover:opacity-90"
             >
-              Edit your bracket
+              {isPastDeadline() ? 'View your bracket' : 'Edit your bracket'}
             </Link>
           ) : (
             <Link
