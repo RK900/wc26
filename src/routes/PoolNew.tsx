@@ -5,7 +5,7 @@ import { formatDeadline, isPastDeadline } from '@/lib/deadline';
 import { createPool } from '@/lib/poolApi';
 import { createBracket } from '@/lib/bracketApi';
 import { isSignedIn, signInWithGoogle, useAuthStore } from '@/store/authStore';
-import { useBracketStore } from '@/store/bracketStore';
+import { initialPicks, useBracketStore } from '@/store/bracketStore';
 
 export function PoolNew() {
   const navigate = useNavigate();
@@ -60,7 +60,9 @@ export function PoolNew() {
     setError(null);
     try {
       const pool = await createPool(poolName.trim(), password);
-      const picks = useBracketStore.getState().picks;
+      // A new pool starts with a fresh bracket — don't seed it with picks
+      // that happen to be in the persisted store from another pool.
+      const picks = initialPicks();
       const bracket = await createBracket({
         poolId: pool.id,
         poolName: pool.name,
@@ -68,7 +70,7 @@ export function PoolNew() {
         nickname: creatorName.trim(),
         picks,
       });
-      useBracketStore.setState({ poolId: pool.id, bracketId: bracket.id });
+      useBracketStore.setState({ picks, poolId: pool.id, bracketId: bracket.id });
       navigate(`/pool/${pool.id}/bracket/${bracket.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

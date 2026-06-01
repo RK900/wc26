@@ -24,7 +24,10 @@ const initialGroups = (): Record<GroupLetter, GroupPick> => {
   return out;
 };
 
-const initialPicks = (): BracketPicks => ({
+// Exported so the create-pool / join-pool flows can seed a brand-new
+// bracket with a fresh default instead of whatever picks happen to be
+// sitting in the persisted store from another pool.
+export const initialPicks = (): BracketPicks => ({
   groups: initialGroups(),
   thirdPlace: { advancingGroups: [] },
   knockout: {},

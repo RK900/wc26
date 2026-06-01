@@ -5,7 +5,7 @@ import { formatDeadline, isPastDeadline } from '@/lib/deadline';
 import { getPool, verifyPoolPassword } from '@/lib/poolApi';
 import { createBracket, getBracket } from '@/lib/bracketApi';
 import { isSignedIn, signInWithGoogle, useAuthStore } from '@/store/authStore';
-import { useBracketStore } from '@/store/bracketStore';
+import { initialPicks, useBracketStore } from '@/store/bracketStore';
 import type { Pool } from '@/lib/types';
 
 export function PoolJoin() {
@@ -148,7 +148,9 @@ export function PoolJoin() {
         navigate(`/pool/${poolId}/bracket/${user.uid}`);
         return;
       }
-      const picks = useBracketStore.getState().picks;
+      // A freshly joined pool starts with a fresh bracket — don't seed it
+      // with picks the user happened to have in the store from another pool.
+      const picks = initialPicks();
       const bracket = await createBracket({
         poolId,
         poolName: pool.name,
@@ -156,7 +158,7 @@ export function PoolJoin() {
         nickname: name.trim(),
         picks,
       });
-      useBracketStore.setState({ poolId, bracketId: bracket.id });
+      useBracketStore.setState({ picks, poolId, bracketId: bracket.id });
       navigate(`/pool/${poolId}/bracket/${bracket.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
