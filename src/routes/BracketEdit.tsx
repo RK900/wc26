@@ -185,7 +185,7 @@ export function BracketEdit() {
             </p>
             {locked && (
               <p className="text-xs text-muted">
-                Bracket locked at {formatDeadline()} (24h before the first WC 2026 game).
+                Bracket locked at {formatDeadline()} (the day before the first WC 2026 game).
               </p>
             )}
           </header>

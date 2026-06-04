@@ -16,7 +16,7 @@ export function FinalizeBar() {
   let leftSub: string;
   if (submitted) {
     leftHeading = 'Submitted';
-    leftSub = `Picks still update until ${formatDeadline()} (24h before the first game)`;
+    leftSub = `Picks still update until ${formatDeadline()} (the day before the first game)`;
   } else if (ready) {
     leftHeading = 'All picks ready';
     leftSub = `Groups ${p.groupsCommitted}/12 · 3rd-place ${p.thirdPlacePicks}/8 · Knockout ${p.knockoutPicks}/${p.knockoutTotal}`;

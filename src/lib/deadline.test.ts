@@ -5,8 +5,8 @@ describe('SUBMIT_DEADLINE', () => {
   // Hard-coded equivalence against the same instant the Firestore rule
   // (firestore.rules:beforeSubmitDeadline) compares against. If either side
   // moves, this test breaks and a human has to confirm both moved.
-  it('is 2026-06-10 19:00 UTC (12:00 PDT) — matches firestore.rules', () => {
-    expect(SUBMIT_DEADLINE).toBe(Date.parse('2026-06-10T19:00:00Z'));
+  it('is 2026-06-11 00:00 UTC (5:00 PM PDT on Jun 10) — matches firestore.rules', () => {
+    expect(SUBMIT_DEADLINE).toBe(Date.parse('2026-06-11T00:00:00Z'));
   });
 });
 
