@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { type User } from 'firebase/auth';
 import { BEST3_SLOT_MATCH_IDS, MATCHES_BY_ROUND } from '@/data/bracket';
 import { GROUPS, GROUP_BY_LETTER, GROUP_LETTERS } from '@/data/groups';
@@ -211,12 +212,20 @@ function AdminDashboard({ user }: DashboardProps) {
             )}
           </p>
         </div>
-        <button
-          onClick={() => signOutAdmin()}
-          className="rounded-md border border-border bg-surface-2 px-3 py-1.5 text-xs font-semibold hover:border-accent/40"
-        >
-          Sign out
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            to="/admin/ai-brackets"
+            className="rounded-md border border-border bg-surface-2 px-3 py-1.5 text-xs font-semibold hover:border-accent/40"
+          >
+            AI brackets →
+          </Link>
+          <button
+            onClick={() => signOutAdmin()}
+            className="rounded-md border border-border bg-surface-2 px-3 py-1.5 text-xs font-semibold hover:border-accent/40"
+          >
+            Sign out
+          </button>
+        </div>
       </header>
 
       <Section title="Group standings" subtitle="Set the final 1st–4th in each group.">

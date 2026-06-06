@@ -1,6 +1,7 @@
 import {
   collection,
   collectionGroup,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -11,6 +12,7 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore';
 import { getFirebase } from '@/lib/firebase';
+import { AI_ID_PREFIX } from '@/lib/aiBracket';
 import type { Bracket, BracketPicks } from '@/lib/types';
 
 // A bracket's doc ID is the owner's Google uid, so there's exactly one
@@ -100,6 +102,53 @@ export async function listBracketsForUser(uid: string): Promise<Bracket[]> {
     const poolId = d.ref.parent.parent?.id ?? '';
     return toBracket(poolId, d.id, d.data());
   });
+}
+
+// === AI brackets (admin-only) ===
+// AI brackets are ordinary bracket docs whose ID is namespaced with
+// AI_ID_PREFIX. firestore.rules lets only the admin create/update/delete
+// these, bypassing the submission deadline. To everyone else they read and
+// score exactly like a human's bracket.
+
+export async function setAIBracket(args: {
+  poolId: string;
+  poolName: string;
+  docId: string; // includes the AI_ID_PREFIX, e.g. 'ai-gpt-5'
+  nickname: string;
+  picks: BracketPicks;
+}): Promise<void> {
+  const { db } = getFirebase();
+  const ts = Date.now();
+  await setDoc(doc(db, 'pools', args.poolId, 'brackets', args.docId), {
+    ownerUid: args.docId, // rules require ownerUid == bracketId
+    nickname: args.nickname,
+    poolName: args.poolName,
+    // Stamp finalizedAt so it shows as "submitted" like any locked bracket.
+    picks: { ...args.picks, finalizedAt: ts },
+    updatedAt: ts,
+    finalizedAt: ts,
+    isAI: true,
+  });
+}
+
+export async function deleteAIBracket(poolId: string, docId: string): Promise<void> {
+  const { db } = getFirebase();
+  await deleteDoc(doc(db, 'pools', poolId, 'brackets', docId));
+}
+
+// Every AI bracket across all pools, found by the AI_ID_PREFIX namespace on
+// ownerUid (a range query on the existing collection-group index). Powers
+// the admin "current AI brackets" list.
+export async function listAIBrackets(): Promise<Bracket[]> {
+  const { db } = getFirebase();
+  // '\uF8FF' is a very-high code point: matches every 'ai-*' ownerUid.
+  const q = query(
+    collectionGroup(db, 'brackets'),
+    where('ownerUid', '>=', AI_ID_PREFIX),
+    where('ownerUid', '<', AI_ID_PREFIX + '\uF8FF'),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => toBracket(d.ref.parent.parent?.id ?? '', d.id, d.data()));
 }
 
 // Full brackets including picks. Used by the leaderboard, which needs the

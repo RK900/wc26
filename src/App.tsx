@@ -22,6 +22,9 @@ const BracketEdit = lazy(() =>
 const Admin = lazy(() =>
   import('@/routes/Admin').then((m) => ({ default: m.Admin })),
 );
+const AdminAIBrackets = lazy(() =>
+  import('@/routes/AdminAIBrackets').then((m) => ({ default: m.AdminAIBrackets })),
+);
 const Scoring = lazy(() =>
   import('@/routes/Scoring').then((m) => ({ default: m.Scoring })),
 );
@@ -76,6 +79,14 @@ export default function App() {
           element={
             <Suspense fallback={<RouteFallback />}>
               <Admin />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/admin/ai-brackets"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <AdminAIBrackets />
             </Suspense>
           }
         />

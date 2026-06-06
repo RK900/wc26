@@ -28,6 +28,14 @@ service cloud.firestore {
              && request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
 
+    // AI brackets live under doc IDs namespaced 'ai-…'. Only the admin can
+    // write them (see the brackets rules below). Real Google uids never
+    // start with 'ai-' (no hyphens), so this namespace can't collide with a
+    // user's own bracket.
+    function isAiBracket(bracketId) {
+      return bracketId.matches('^ai-.*');
+    }
+
     // Collection-group read for brackets. Lets a signed-in user query all of
     // their own brackets across pools (the "your brackets" list), and also
     // covers direct bracket reads. Open to any authed user, anonymous included.
@@ -57,17 +65,37 @@ service cloud.firestore {
         // Pool-scoped read for the leaderboard (collection query). Cross-pool
         // reads use the collection-group rule above.
         allow read: if request.auth != null;
-        allow create: if isRealUser()
-                      && bracketId == request.auth.uid
-                      && request.resource.data.ownerUid == request.auth.uid
-                      && beforeSubmitDeadline()
-                      && request.resource.data.keys().hasAll(['ownerUid', 'nickname', 'picks', 'updatedAt']);
-        allow update: if isRealUser()
-                      && bracketId == request.auth.uid
-                      && resource.data.ownerUid == request.auth.uid
-                      && request.resource.data.ownerUid == request.auth.uid
-                      && beforeSubmitDeadline();
-        allow delete: if false;
+
+        // A user owns their own bracket (doc id == uid) and may write it
+        // until the deadline. OR the admin may write an AI bracket (id
+        // 'ai-…') into any pool at any time — admin AI writes are not gated
+        // by the deadline, and the ownerUid is pinned to the doc id.
+        allow create: if (
+                        isRealUser()
+                        && bracketId == request.auth.uid
+                        && request.resource.data.ownerUid == request.auth.uid
+                        && beforeSubmitDeadline()
+                        && request.resource.data.keys().hasAll(['ownerUid', 'nickname', 'picks', 'updatedAt'])
+                      ) || (
+                        isAdminUser()
+                        && isAiBracket(bracketId)
+                        && request.resource.data.ownerUid == bracketId
+                        && request.resource.data.keys().hasAll(['ownerUid', 'nickname', 'picks', 'updatedAt'])
+                      );
+        allow update: if (
+                        isRealUser()
+                        && bracketId == request.auth.uid
+                        && resource.data.ownerUid == request.auth.uid
+                        && request.resource.data.ownerUid == request.auth.uid
+                        && beforeSubmitDeadline()
+                      ) || (
+                        isAdminUser()
+                        && isAiBracket(bracketId)
+                        && request.resource.data.ownerUid == bracketId
+                      );
+        // Only the admin may delete, and only AI brackets — a player's
+        // bracket is never deletable.
+        allow delete: if isAdminUser() && isAiBracket(bracketId);
       }
     }
 

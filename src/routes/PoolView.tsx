@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ensureSignedIn, isFirebaseConfigured } from '@/lib/firebase';
 import { isPastDeadline } from '@/lib/deadline';
 import { subscribeToPoolBracketsFull } from '@/lib/bracketApi';
+import { isAIBracketId } from '@/lib/aiBracket';
 import { getPool } from '@/lib/poolApi';
 import { subscribeResults } from '@/lib/resultsApi';
 import { scoreBracket } from '@/lib/scoring';
@@ -150,6 +151,14 @@ export function PoolView() {
                         {i + 1}
                       </span>
                       <span className="font-semibold">{m.nickname}</span>
+                      {isAIBracketId(m.id) && (
+                        <span
+                          className="rounded bg-accent-2/20 px-1.5 py-0.5 text-[10px] font-semibold text-accent-2"
+                          title="AI-generated bracket"
+                        >
+                          🤖 AI
+                        </span>
+                      )}
                       {isMine && (
                         <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold text-accent">
                           you

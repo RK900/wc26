@@ -1,0 +1,130 @@
+{
+  "nickname": "🤖 Example Bot",
+  "groups": {
+    "A": [
+      "MEX",
+      "RSA",
+      "KOR",
+      "CZE"
+    ],
+    "B": [
+      "CAN",
+      "BIH",
+      "QAT",
+      "SUI"
+    ],
+    "C": [
+      "BRA",
+      "MAR",
+      "HAI",
+      "SCO"
+    ],
+    "D": [
+      "USA",
+      "PAR",
+      "AUS",
+      "TUR"
+    ],
+    "E": [
+      "GER",
+      "CUW",
+      "CIV",
+      "ECU"
+    ],
+    "F": [
+      "NED",
+      "JPN",
+      "SWE",
+      "TUN"
+    ],
+    "G": [
+      "BEL",
+      "EGY",
+      "IRN",
+      "NZL"
+    ],
+    "H": [
+      "ESP",
+      "CPV",
+      "KSA",
+      "URU"
+    ],
+    "I": [
+      "FRA",
+      "SEN",
+      "IRQ",
+      "NOR"
+    ],
+    "J": [
+      "ARG",
+      "ALG",
+      "AUT",
+      "JOR"
+    ],
+    "K": [
+      "POR",
+      "COD",
+      "UZB",
+      "COL"
+    ],
+    "L": [
+      "ENG",
+      "CRO",
+      "GHA",
+      "PAN"
+    ]
+  },
+  "thirdPlaceAdvancers": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H"
+  ],
+  "advancers": {
+    "roundOf16": [
+      "RSA",
+      "GER",
+      "NED",
+      "BRA",
+      "FRA",
+      "CUW",
+      "MEX",
+      "ENG",
+      "USA",
+      "BEL",
+      "COD",
+      "ESP",
+      "CAN",
+      "ARG",
+      "POR",
+      "PAR"
+    ],
+    "quarterfinals": [
+      "GER",
+      "RSA",
+      "BRA",
+      "MEX",
+      "COD",
+      "USA",
+      "ARG",
+      "CAN"
+    ],
+    "semifinals": [
+      "GER",
+      "COD",
+      "BRA",
+      "ARG"
+    ],
+    "final": [
+      "GER",
+      "BRA"
+    ],
+    "champion": "GER",
+    "thirdPlaceWinner": "COD"
+  },
+  "finalGoalsGuess": 3
+}
