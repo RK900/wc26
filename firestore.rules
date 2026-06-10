@@ -12,12 +12,12 @@ service cloud.firestore {
              && request.auth.uid == get(/databases/$(database)/documents/admin/config).data.uid;
     }
 
-    // Bracket submission deadline: 5:00 PM PT on Wednesday 2026-06-10 (the
-    // day before the first World Cup 2026 match, which kicks off 12:00 PT on
-    // 2026-06-11). 17:00 PDT = 00:00 UTC on the next day, so the cutoff is
-    // exactly UTC midnight on 2026-06-11.
+    // Bracket submission deadline: 11:59 PM PT on Wednesday 2026-06-10 (the
+    // night before the first World Cup 2026 match, which kicks off 12:00 PT
+    // on 2026-06-11). 23:59 PDT = 06:59 UTC on 2026-06-11, i.e. UTC midnight
+    // on the 11th plus 6h59m.
     function beforeSubmitDeadline() {
-      return request.time < timestamp.date(2026, 6, 11);
+      return request.time < timestamp.date(2026, 6, 11) + duration.value(6, 'h') + duration.value(59, 'm');
     }
 
     // A non-anonymous signed-in user (i.e. signed in with Google). Anonymous

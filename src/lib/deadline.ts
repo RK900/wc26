@@ -1,8 +1,8 @@
 // World Cup 2026 first match: Mexico, Thursday June 11 at Estadio Azteca,
-// kicking off 12:00 PM Pacific. Submission deadline is 5:00 PM Pacific on
-// Wednesday June 10 (PDT in June, UTC-7) — the day before kickoff.
-// 5:00 PDT = 00:00 UTC on 2026-06-11.
-export const SUBMIT_DEADLINE = Date.parse('2026-06-10T17:00:00-07:00');
+// kicking off 12:00 PM Pacific. Submission deadline is 11:59 PM Pacific on
+// Wednesday June 10 (PDT in June, UTC-7) — the night before kickoff.
+// 11:59 PM PDT = 06:59 UTC on 2026-06-11.
+export const SUBMIT_DEADLINE = Date.parse('2026-06-10T23:59:00-07:00');
 
 const DEV_OVERRIDE_KEY = 'dleuworldcup:dev-deadline';
 
