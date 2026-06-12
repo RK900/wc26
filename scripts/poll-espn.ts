@@ -29,6 +29,7 @@ import { MATCHES } from '../src/data/bracket';
 import { GROUP_BY_LETTER, GROUP_LETTERS, GROUPS } from '../src/data/groups';
 import { mapThirdPlaceAdvancers } from '../src/lib/thirdPlaceMap';
 import { resolveSlot } from '../src/lib/resolveBracket';
+import { mergeGroupStandings } from './pollGroups';
 import type {
   BracketPicks,
   GroupLetter,
@@ -67,7 +68,7 @@ interface EspnEvent {
   date: string;
   name: string;
   season?: { slug?: string };
-  status?: { type?: { completed?: boolean } };
+  status?: { type?: { completed?: boolean; state?: string } };
   competitions?: { competitors?: EspnCompetitor[] }[];
 }
 
@@ -246,27 +247,9 @@ interface PollResult {
   knockoutSkipped: { matchId: number; reason: string }[];
 }
 
-function mergeGroupStandings(
-  picks: BracketPicks,
-  computed: Record<GroupLetter, GroupOrder>,
-): { groupsUpdated: GroupLetter[]; groupsSkipped: GroupLetter[] } {
-  const updated: GroupLetter[] = [];
-  const skipped: GroupLetter[] = [];
-  for (const letter of GROUP_LETTERS) {
-    const current = picks.groups[letter].order;
-    if (current.some((c) => c !== null)) {
-      skipped.push(letter); // admin has set something here; leave alone
-      continue;
-    }
-    const computedOrder = computed[letter];
-    if (computedOrder.every((c) => c === null)) {
-      continue; // no group-stage data yet
-    }
-    picks.groups[letter] = { order: computedOrder, committed: true };
-    updated.push(letter);
-  }
-  return { groupsUpdated: updated, groupsSkipped: skipped };
-}
+// mergeGroupStandings now lives in ./pollGroups (extracted so it can be
+// unit-tested, and fixed there to re-rank groups live instead of freezing
+// them after the first write).
 
 function pollKnockoutWinners(
   picks: BracketPicks,
@@ -335,7 +318,11 @@ function pollKnockoutWinners(
   return { updates, skipped };
 }
 
-function poll(picks: BracketPicks, events: EspnEvent[]): {
+function poll(
+  picks: BracketPicks,
+  events: EspnEvent[],
+  overrides: Record<string, true>,
+): {
   nextPicks: BracketPicks;
   result: PollResult;
 } {
@@ -343,7 +330,7 @@ function poll(picks: BracketPicks, events: EspnEvent[]): {
 
   // 1. Group standings (live partial during group stage).
   const { byGroup } = computeGroupStandings(events);
-  const { groupsUpdated, groupsSkipped } = mergeGroupStandings(next, byGroup);
+  const { groupsUpdated, groupsSkipped } = mergeGroupStandings(next, byGroup, overrides);
 
   // 2. Best-3 advancers (only when all 72 group matches done, and admin
   // hasn't set them).
@@ -432,6 +419,10 @@ async function main() {
   // Seed an empty results doc if none exists. Auto-seed so the poller
   // works end-to-end even before admin opens /admin.
   let picks: BracketPicks;
+  // Sections the admin pinned by hand; the poller must not overwrite them.
+  // Keyed '{section}.{key}' (e.g. 'groups.A'). Empty until the admin UI
+  // starts marking overrides — until then every group re-ranks each poll.
+  let manualOverrides: Record<string, true> = {};
   if (!snap.exists) {
     picks = {
       groups: Object.fromEntries(
@@ -443,15 +434,18 @@ async function main() {
     };
     console.log('No /results/wc2026 doc; seeding empty.');
   } else {
-    const data = snap.data() as { picks: BracketPicks } | undefined;
+    const data = snap.data() as
+      | { picks: BracketPicks; manualOverrides?: Record<string, true> }
+      | undefined;
     if (!data?.picks) {
       console.log('/results/wc2026 exists but missing picks; skipping.');
       return;
     }
     picks = data.picks;
+    manualOverrides = data.manualOverrides ?? {};
   }
 
-  const { nextPicks, result } = poll(picks, events);
+  const { nextPicks, result } = poll(picks, events, manualOverrides);
   logResult(result);
 
   if (SMOKE) {
@@ -475,6 +469,8 @@ async function main() {
     picks: nextPicks,
     lastUpdated: Date.now(),
     lastUpdatedBy: 'espn-cron',
+    // ref.set replaces the whole doc — carry any admin pins forward.
+    ...(Object.keys(manualOverrides).length ? { manualOverrides } : {}),
   });
   console.log('Wrote /results/wc2026.');
 }
