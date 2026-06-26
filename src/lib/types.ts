@@ -66,6 +66,14 @@ export interface Pool {
   passwordHash: string;
   passwordSalt: string;
   createdAt: number;
+  // Pool format. Absent / 'full' = the original challenge (predict groups,
+  // 3rd-place, and the whole knockout). 'knockout' = a knockout-only pool
+  // opened once the group stage is decided: the group + 3rd-place sections
+  // are locked to the actual results and members only pick the bracket.
+  mode?: 'full' | 'knockout';
+  // Per-pool submission deadline (epoch ms). Absent = the global
+  // SUBMIT_DEADLINE. Knockout pools carry their own (later) deadline.
+  submitDeadline?: number;
 }
 
 export interface Bracket {

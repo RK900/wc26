@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ensureSignedIn, isFirebaseConfigured } from '@/lib/firebase';
-import { isPastDeadline } from '@/lib/deadline';
+import { formatDeadline, isPastDeadline, SUBMIT_DEADLINE } from '@/lib/deadline';
 import { subscribeToPoolBracketsFull } from '@/lib/bracketApi';
 import { isAIBracketId } from '@/lib/aiBracket';
 import { getPool } from '@/lib/poolApi';
@@ -57,10 +57,21 @@ export function PoolView() {
     };
   }, [poolId]);
 
+  const knockoutOnly = pool?.mode === 'knockout';
+  const deadline = pool?.submitDeadline ?? SUBMIT_DEADLINE;
+
   const rows: LeaderboardRow[] = useMemo(() => {
+    const scoreOf = (b: Bracket): number | null => {
+      if (!results) return null;
+      const s = scoreBracket(b.picks, results.picks);
+      // Knockout pools rank on the bracket only (groups are the same actual
+      // results for everyone), so show the knockout subtotal (max 176) rather
+      // than the full total (max 280).
+      return knockoutOnly ? s.knockoutTotal : s.total;
+    };
     const list = brackets.map((b): LeaderboardRow => ({
       bracket: b,
-      score: results ? scoreBracket(b.picks, results.picks).total : null,
+      score: scoreOf(b),
     }));
     // Tiebreaker: when scores are equal, the bracket whose final-goals
     // guess is closer to the actual final-goals count wins. Falls back
@@ -81,7 +92,7 @@ export function PoolView() {
       return a.bracket.nickname.localeCompare(b.bracket.nickname);
     });
     return list;
-  }, [brackets, results]);
+  }, [brackets, results, knockoutOnly]);
 
   if (loading) return <div className="text-muted">Loading…</div>;
   if (error)
@@ -97,18 +108,36 @@ export function PoolView() {
   return (
     <div className="space-y-8">
       <header className="rounded-lg border border-border bg-surface p-6">
-        <h1 className="text-2xl font-semibold">{pool.name}</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-2xl font-semibold">{pool.name}</h1>
+          {knockoutOnly && (
+            <span
+              className="rounded bg-accent-2/20 px-2 py-0.5 text-[11px] font-semibold text-accent-2"
+              title="Knockout-only pool — members predict just the bracket"
+            >
+              🏆 Knockout
+            </span>
+          )}
+        </div>
         <p className="mt-1 text-sm text-muted">
           {brackets.length} {brackets.length === 1 ? 'bracket' : 'brackets'}
           {hasResults && <span className="text-accent">{' · scoring live'}</span>}
         </p>
+        {knockoutOnly && (
+          <p className="mt-1 text-xs text-muted">
+            Bracket-only challenge (Round of 32 → Final).{' '}
+            {isPastDeadline(deadline)
+              ? `Picks locked ${formatDeadline(deadline)}.`
+              : `Picks lock ${formatDeadline(deadline)}.`}
+          </p>
+        )}
         <div className="mt-4 flex flex-wrap items-center gap-3">
           {myBracket ? (
             <Link
               to={`/pool/${poolId}/bracket/${myBracket.id}`}
               className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-bg hover:opacity-90"
             >
-              {isPastDeadline() ? 'View your bracket' : 'Edit your bracket'}
+              {isPastDeadline(deadline) ? 'View your bracket' : 'Edit your bracket'}
             </Link>
           ) : (
             <Link

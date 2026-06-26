@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ensureSignedIn, isFirebaseConfigured } from '@/lib/firebase';
-import { formatDeadline, isPastDeadline } from '@/lib/deadline';
+import { formatDeadline, isPastDeadline, SUBMIT_DEADLINE } from '@/lib/deadline';
 import { getPool, verifyPoolPassword } from '@/lib/poolApi';
 import { createBracket, getBracket } from '@/lib/bracketApi';
+import { emptyResultsPicks, readResults } from '@/lib/resultsApi';
 import { isSignedIn, signInWithGoogle, useAuthStore } from '@/store/authStore';
-import { initialPicks, useBracketStore } from '@/store/bracketStore';
-import type { Pool } from '@/lib/types';
+import { initialPicks, knockoutSeedPicks, useBracketStore } from '@/store/bracketStore';
+import type { BracketPicks, Pool } from '@/lib/types';
 
 export function PoolJoin() {
   const { id: poolId } = useParams<{ id: string }>();
@@ -80,14 +81,17 @@ export function PoolJoin() {
   if (error) return <ErrorBox message={error} />;
   if (!pool || !poolId) return null;
 
-  if (isPastDeadline()) {
+  const knockoutMode = pool.mode === 'knockout';
+  const deadline = pool.submitDeadline ?? SUBMIT_DEADLINE;
+
+  if (isPastDeadline(deadline)) {
     return (
       <div className="mx-auto max-w-md">
         <h1 className="mb-1 text-2xl font-semibold">Join &ldquo;{pool.name}&rdquo;</h1>
         <div className="mt-4 rounded-md border border-warn/40 bg-warn/10 px-4 py-3 text-sm text-warn">
           <p className="font-semibold">Bracket submissions are closed.</p>
           <p className="mt-1 text-warn/80">
-            The deadline was {formatDeadline()}. You can still view this pool's
+            The deadline was {formatDeadline(deadline)}. You can still view this pool's
             leaderboard.
           </p>
           <Link
@@ -134,8 +138,8 @@ export function PoolJoin() {
       return;
     }
     if (!name.trim()) return;
-    if (isPastDeadline()) {
-      setError(`Bracket submissions closed at ${formatDeadline()}.`);
+    if (isPastDeadline(deadline)) {
+      setError(`Bracket submissions closed at ${formatDeadline(deadline)}.`);
       return;
     }
     setBusy(true);
@@ -148,9 +152,17 @@ export function PoolJoin() {
         navigate(`/pool/${poolId}/bracket/${user.uid}`);
         return;
       }
-      // A freshly joined pool starts with a fresh bracket — don't seed it
-      // with picks the user happened to have in the store from another pool.
-      const picks = initialPicks();
+      // A freshly joined pool starts with a fresh bracket — don't seed it with
+      // picks the user happened to have in the store from another pool. A
+      // knockout pool seeds the (locked) group + 3rd-place sections from the
+      // live results so the bracket resolves to the real qualified teams.
+      let picks: BracketPicks;
+      if (knockoutMode) {
+        const res = await readResults();
+        picks = knockoutSeedPicks(res?.picks ?? emptyResultsPicks());
+      } else {
+        picks = initialPicks();
+      }
       const bracket = await createBracket({
         poolId,
         poolName: pool.name,
@@ -169,6 +181,16 @@ export function PoolJoin() {
   return (
     <div className="mx-auto max-w-md">
       <h1 className="mb-1 text-2xl font-semibold">Join &ldquo;{pool.name}&rdquo;</h1>
+
+      {knockoutMode && (
+        <div className="mb-5 mt-3 rounded-md border border-accent-2/40 bg-accent-2/10 px-4 py-3 text-sm text-accent-2">
+          <p className="font-semibold">🏆 Knockout-only pool</p>
+          <p className="mt-1 text-accent-2/80">
+            Predict just the bracket (Round of 32 → Final) — the group stage is
+            already decided. Picks lock {formatDeadline(deadline)}.
+          </p>
+        </div>
+      )}
 
       {step === 'password' && (
         <>

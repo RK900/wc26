@@ -41,11 +41,21 @@ export async function readResults(): Promise<ResultsDoc | null> {
   return snap.data() as ResultsDoc;
 }
 
-export async function writeResults(picks: BracketPicks): Promise<void> {
+// `manualOverrides` pins sections the admin set by hand (keys like 'groups.A'
+// or 'thirdPlace') so the ESPN poller won't overwrite them. setDoc replaces
+// the whole doc, so the admin must pass the full override set every time —
+// omitting a key un-pins it (hands that section back to the poller).
+export async function writeResults(
+  picks: BracketPicks,
+  manualOverrides?: Record<string, true>,
+): Promise<void> {
   const payload: ResultsDoc = {
     picks,
     lastUpdated: Date.now(),
     lastUpdatedBy: 'admin',
+    ...(manualOverrides && Object.keys(manualOverrides).length
+      ? { manualOverrides }
+      : {}),
   };
   await setDoc(resultsRef(), payload);
 }

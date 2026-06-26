@@ -144,6 +144,11 @@ interface DashboardProps {
 
 function AdminDashboard({ user }: DashboardProps) {
   const [picks, setPicks] = useState<BracketPicks | null>(null);
+  // Sections pinned by hand so the ESPN poller leaves them alone. Keyed
+  // 'groups.A'…'groups.L' and 'thirdPlace' — exactly the fields that make up
+  // the knockout starting bracket. Any other keys (e.g. legacy 'knockout.*')
+  // are preserved untouched.
+  const [overrides, setOverrides] = useState<Record<string, true>>({});
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -156,6 +161,7 @@ function AdminDashboard({ user }: DashboardProps) {
       .then((doc) => {
         if (cancelled) return;
         setPicks(doc?.picks ?? emptyResultsPicks());
+        setOverrides(doc?.manualOverrides ?? {});
         setLastUpdated(doc?.lastUpdated ?? null);
       })
       .catch((e) => {
@@ -172,12 +178,52 @@ function AdminDashboard({ user }: DashboardProps) {
     setDirty(true);
   };
 
+  // Pin/unpin a single override key. Editing a section auto-pins it (below) so
+  // a hand-set value sticks against the poller by default.
+  const setPin = (key: string, on: boolean) => {
+    setOverrides((prev) => {
+      if (on === !!prev[key]) return prev;
+      const next = { ...prev };
+      if (on) next[key] = true;
+      else delete next[key];
+      return next;
+    });
+    setDirty(true);
+  };
+
+  const pinAll = () => {
+    setOverrides((prev) => {
+      const next: Record<string, true> = { ...prev, thirdPlace: true };
+      for (const l of GROUP_LETTERS) next[`groups.${l}`] = true;
+      return next;
+    });
+    setDirty(true);
+  };
+
+  // Hand every group + the advancers back to the poller. Preserve any other
+  // (non-starting-bracket) override keys.
+  const unpinAll = () => {
+    setOverrides((prev) => {
+      const next: Record<string, true> = {};
+      for (const k of Object.keys(prev)) {
+        if (k === 'thirdPlace' || k.startsWith('groups.')) continue;
+        next[k] = true;
+      }
+      return next;
+    });
+    setDirty(true);
+  };
+
+  const startingBracketPinned =
+    GROUP_LETTERS.filter((l) => overrides[`groups.${l}`]).length +
+    (overrides['thirdPlace'] ? 1 : 0);
+
   const save = async () => {
     if (!picks) return;
     setSaving(true);
     setSaveError(null);
     try {
-      await writeResults(picks);
+      await writeResults(picks, overrides);
       setLastUpdated(Date.now());
       setDirty(false);
     } catch (e) {
@@ -228,6 +274,32 @@ function AdminDashboard({ user }: DashboardProps) {
         </div>
       </header>
 
+      <Section
+        title="Knockout starting bracket override"
+        subtitle="Pin group standings or the 8 advancers to lock the 32 teams that seed knockout pools — pinned items override the ESPN poller and won't be auto-updated. Editing a section pins it automatically. (This is the same field that scores everyone's group / 3rd-place picks, so there's one source of truth.)"
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-xs text-muted">
+            {startingBracketPinned} / 13 pinned{' '}
+            <span className="text-muted/70">(12 groups + advancers)</span>
+          </span>
+          <button
+            type="button"
+            onClick={pinAll}
+            className="rounded-md border border-border bg-surface-2 px-3 py-1.5 text-xs font-semibold hover:border-accent/40"
+          >
+            🔒 Pin all
+          </button>
+          <button
+            type="button"
+            onClick={unpinAll}
+            className="rounded-md border border-border bg-surface-2 px-3 py-1.5 text-xs font-semibold hover:border-accent/40"
+          >
+            🔓 Unpin all
+          </button>
+        </div>
+      </Section>
+
       <Section title="Group standings" subtitle="Set the final 1st–4th in each group.">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {GROUPS.map((g) => (
@@ -235,15 +307,19 @@ function AdminDashboard({ user }: DashboardProps) {
               key={g.letter}
               letter={g.letter}
               order={picks.groups[g.letter].order}
-              onChange={(order) =>
+              pinned={!!overrides[`groups.${g.letter}`]}
+              onTogglePin={(on) => setPin(`groups.${g.letter}`, on)}
+              onChange={(order) => {
                 update({
                   ...picks,
                   groups: {
                     ...picks.groups,
                     [g.letter]: { order, committed: true },
                   },
-                })
-              }
+                });
+                // A hand-set group should stick against the poller.
+                setPin(`groups.${g.letter}`, true);
+              }}
             />
           ))}
         </div>
@@ -255,9 +331,12 @@ function AdminDashboard({ user }: DashboardProps) {
       >
         <ThirdPlaceSelector
           selected={picks.thirdPlace.advancingGroups}
-          onChange={(advancingGroups) =>
-            update({ ...picks, thirdPlace: { advancingGroups } })
-          }
+          pinned={!!overrides['thirdPlace']}
+          onTogglePin={(on) => setPin('thirdPlace', on)}
+          onChange={(advancingGroups) => {
+            update({ ...picks, thirdPlace: { advancingGroups } });
+            setPin('thirdPlace', true);
+          }}
         />
       </Section>
 
@@ -335,10 +414,14 @@ function Section(props: {
 function GroupStandingsCard({
   letter,
   order,
+  pinned,
+  onTogglePin,
   onChange,
 }: {
   letter: GroupLetter;
   order: GroupOrder;
+  pinned: boolean;
+  onTogglePin: (on: boolean) => void;
   onChange: (order: GroupOrder) => void;
 }) {
   const teams = GROUP_BY_LETTER[letter].teams;
@@ -350,12 +433,15 @@ function GroupStandingsCard({
 
   const dupCodes = duplicates(order);
   return (
-    <div className="rounded-md border border-border bg-surface p-4">
+    <div className={`rounded-md border bg-surface p-4 ${pinned ? 'border-accent/50' : 'border-border'}`}>
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm font-semibold">Group {letter}</span>
-        {dupCodes.length > 0 && (
-          <span className="text-xs text-danger">duplicate team</span>
-        )}
+        <div className="flex items-center gap-2">
+          {dupCodes.length > 0 && (
+            <span className="text-xs text-danger">duplicate team</span>
+          )}
+          <PinToggle pinned={pinned} onToggle={onTogglePin} />
+        </div>
       </div>
       <div className="space-y-2">
         {([0, 1, 2, 3] as const).map((i) => {
@@ -387,9 +473,13 @@ function GroupStandingsCard({
 
 function ThirdPlaceSelector({
   selected,
+  pinned,
+  onTogglePin,
   onChange,
 }: {
   selected: GroupLetter[];
+  pinned: boolean;
+  onTogglePin: (on: boolean) => void;
   onChange: (next: GroupLetter[]) => void;
 }) {
   const set = new Set(selected);
@@ -402,12 +492,15 @@ function ThirdPlaceSelector({
 
   return (
     <>
-      <p className="mb-3 text-xs text-muted">
-        Selected: {selected.length} / 8
-        {selected.length > 8 && (
-          <span className="ml-2 text-danger">too many — pick exactly 8</span>
-        )}
-      </p>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="text-xs text-muted">
+          Selected: {selected.length} / 8
+          {selected.length > 8 && (
+            <span className="ml-2 text-danger">too many — pick exactly 8</span>
+          )}
+        </p>
+        <PinToggle pinned={pinned} onToggle={onTogglePin} />
+      </div>
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
         {GROUP_LETTERS.map((letter) => (
           <label
@@ -600,6 +693,33 @@ function SaveBar({
         </button>
       </div>
     </div>
+  );
+}
+
+function PinToggle({
+  pinned,
+  onToggle,
+}: {
+  pinned: boolean;
+  onToggle: (on: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(!pinned)}
+      title={
+        pinned
+          ? "Pinned — the ESPN poller won't change this"
+          : 'Auto — the poller may update this from live results'
+      }
+      className={`shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition ${
+        pinned
+          ? 'bg-accent/20 text-accent'
+          : 'bg-surface-2 text-muted hover:text-text'
+      }`}
+    >
+      {pinned ? '🔒 Pinned' : '🔓 Auto'}
+    </button>
   );
 }
 

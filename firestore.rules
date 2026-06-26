@@ -12,12 +12,26 @@ service cloud.firestore {
              && request.auth.uid == get(/databases/$(database)/documents/admin/config).data.uid;
     }
 
-    // Bracket submission deadline: 11:59 PM PT on Wednesday 2026-06-10 (the
-    // night before the first World Cup 2026 match, which kicks off 12:00 PT
-    // on 2026-06-11). 23:59 PDT = 06:59 UTC on 2026-06-11, i.e. UTC midnight
-    // on the 11th plus 6h59m.
-    function beforeSubmitDeadline() {
-      return request.time < timestamp.date(2026, 6, 11) + duration.value(6, 'h') + duration.value(59, 'm');
+    // Full-tournament submission deadline: 11:59 PM PT on Wednesday 2026-06-10
+    // (the night before the first World Cup 2026 match, which kicks off 12:00
+    // PT on 2026-06-11). 23:59 PDT = 06:59 UTC on 2026-06-11, i.e. UTC midnight
+    // on the 11th plus 6h59m. Mirrors SUBMIT_DEADLINE in src/lib/deadline.ts.
+    function fullSubmitDeadlineMs() {
+      return (timestamp.date(2026, 6, 11) + duration.value(6, 'h') + duration.value(59, 'm')).toMillis();
+    }
+
+    // A pool may carry its own later deadline in `submitDeadline` (epoch ms) —
+    // e.g. a knockout-only pool opened once the group stage is decided. Absent
+    // => the full deadline above. Read from the parent pool doc; the value is
+    // capped at pool-create time (see the pool create rule) so it can't be set
+    // arbitrarily far into the future to bypass the deadline.
+    function poolSubmitDeadlineMs(poolId) {
+      let p = get(/databases/$(database)/documents/pools/$(poolId)).data;
+      return ('submitDeadline' in p) ? p.submitDeadline : fullSubmitDeadlineMs();
+    }
+
+    function beforeSubmitDeadline(poolId) {
+      return request.time.toMillis() < poolSubmitDeadlineMs(poolId);
     }
 
     // A non-anonymous signed-in user (i.e. signed in with Google). Anonymous
@@ -53,7 +67,13 @@ service cloud.firestore {
                     && request.resource.data.keys().hasAll(['name', 'passwordHash', 'passwordSalt', 'createdAt'])
                     && request.resource.data.name is string
                     && request.resource.data.passwordHash is string
-                    && request.resource.data.passwordSalt is string;
+                    && request.resource.data.passwordSalt is string
+                    // A pool's optional submitDeadline can't exceed the end of
+                    // the tournament — caps how late a custom deadline can push
+                    // bracket writes (the bracket rules trust this value).
+                    && (!('submitDeadline' in request.resource.data)
+                        || (request.resource.data.submitDeadline is number
+                            && request.resource.data.submitDeadline < timestamp.date(2026, 7, 20).toMillis()));
       allow update, delete: if false;
 
       // Brackets — a bracket's doc id IS its owner's Google uid, so ownership
@@ -74,7 +94,7 @@ service cloud.firestore {
                         isRealUser()
                         && bracketId == request.auth.uid
                         && request.resource.data.ownerUid == request.auth.uid
-                        && beforeSubmitDeadline()
+                        && beforeSubmitDeadline(poolId)
                         && request.resource.data.keys().hasAll(['ownerUid', 'nickname', 'picks', 'updatedAt'])
                       ) || (
                         isAdminUser()
@@ -87,7 +107,7 @@ service cloud.firestore {
                         && bracketId == request.auth.uid
                         && resource.data.ownerUid == request.auth.uid
                         && request.resource.data.ownerUid == request.auth.uid
-                        && beforeSubmitDeadline()
+                        && beforeSubmitDeadline(poolId)
                       ) || (
                         isAdminUser()
                         && isAiBracket(bracketId)

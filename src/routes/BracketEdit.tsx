@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ensureSignedIn, isFirebaseConfigured } from '@/lib/firebase';
 import { getBracket, updateBracketPicks } from '@/lib/bracketApi';
 import { getPool } from '@/lib/poolApi';
-import { formatDeadline, isPastDeadline } from '@/lib/deadline';
+import { formatDeadline, isPastDeadline, SUBMIT_DEADLINE } from '@/lib/deadline';
 import { subscribeResults } from '@/lib/resultsApi';
 import { scoreBracket } from '@/lib/scoring';
 import { isSignedIn, useAuthStore } from '@/store/authStore';
@@ -34,6 +34,15 @@ export function BracketEdit() {
   // autosave so we never write a stale/persisted store over the server copy
   // before pulling the server's picks in. Reset on every fresh load.
   const hydratedFor = useRef<string | null>(null);
+  // Signature of the last results snapshot synced into a knockout bracket's
+  // (locked) group + 3rd-place sections, so we re-sync only when the actual
+  // group standings change — not on every unrelated results push.
+  const lastResultsSync = useRef<string>('');
+
+  // Knockout pools carry their own (later) deadline and lock the group +
+  // 3rd-place sections. Both fall back to full-pool behavior until pool loads.
+  const deadline = pool?.submitDeadline ?? SUBMIT_DEADLINE;
+  const knockoutOnly = pool?.mode === 'knockout';
 
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
@@ -49,6 +58,7 @@ export function BracketEdit() {
     }
     initialLoadDone.current = false;
     hydratedFor.current = null;
+    lastResultsSync.current = '';
     setLoading(true);
     (async () => {
       try {
@@ -77,7 +87,8 @@ export function BracketEdit() {
       setEditable(false);
       return;
     }
-    const canEdit = isSignedIn(user) && bracket.ownerUid === user.uid && !isPastDeadline();
+    const canEdit =
+      isSignedIn(user) && bracket.ownerUid === user.uid && !isPastDeadline(deadline);
     setEditable(canEdit);
     // Hydrate the store from the freshly-loaded server bracket exactly once
     // per load. Keying on a per-mount ref (not the persisted store's
@@ -93,7 +104,25 @@ export function BracketEdit() {
       });
       hydratedFor.current = bracket.id;
     }
-  }, [bracket, user]);
+  }, [bracket, user, deadline]);
+
+  // Knockout-only pools: the group + 3rd-place sections aren't user-editable —
+  // they ARE the actual results. Keep them synced from the live results doc so
+  // the bracket resolves to the real qualified teams, even if the user opened
+  // their bracket before the group stage fully finished. Cascade then clears
+  // any knockout pick that no longer resolves. Re-syncs only when the group
+  // standings actually change (not on every knockout-result push).
+  useEffect(() => {
+    if (!knockoutOnly || !editable || !bracket || !results) return;
+    if (hydratedFor.current !== bracket.id) return;
+    const sig = JSON.stringify({
+      g: results.picks.groups,
+      t: results.picks.thirdPlace.advancingGroups,
+    });
+    if (sig === lastResultsSync.current) return;
+    lastResultsSync.current = sig;
+    useBracketStore.getState().syncKnockoutResults(results.picks);
+  }, [knockoutOnly, editable, bracket, results]);
 
   // Debounced auto-save when picks change in editable mode.
   useEffect(() => {
@@ -104,7 +133,7 @@ export function BracketEdit() {
     // Defensive re-check: if the deadline passed mid-session, lock the
     // editor and skip this save. The polling effect below flips editable
     // to false within ~30s but a save could otherwise race past it.
-    if (isPastDeadline()) {
+    if (isPastDeadline(deadline)) {
       setEditable(false);
       return;
     }
@@ -114,7 +143,7 @@ export function BracketEdit() {
       // would otherwise reach the server, which would correctly reject the
       // write — but the UI would flash "Save failed". Locking client-side
       // means the locked-viewer state is the only thing the user sees.
-      if (isPastDeadline()) {
+      if (isPastDeadline(deadline)) {
         setEditable(false);
         return;
       }
@@ -126,25 +155,25 @@ export function BracketEdit() {
         });
     }, SAVE_DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [picks, editable, bracket]);
+  }, [picks, editable, bracket, deadline]);
 
   // Flip out of editable mode when the deadline passes while the tab is
   // open. Polling beats setTimeout because browsers cap long timeouts
   // and throttle background tabs — we want to lock the editor regardless.
   useEffect(() => {
     if (!editable) return;
-    if (isPastDeadline()) {
+    if (isPastDeadline(deadline)) {
       setEditable(false);
       return;
     }
     const id = setInterval(() => {
-      if (isPastDeadline()) {
+      if (isPastDeadline(deadline)) {
         setEditable(false);
         clearInterval(id);
       }
     }, 30_000);
     return () => clearInterval(id);
-  }, [editable]);
+  }, [editable, deadline]);
 
   // Picks to score against — the live in-progress picks if editing, the
   // saved bracket picks if read-only.
@@ -152,8 +181,11 @@ export function BracketEdit() {
   const score = useMemo(() => {
     if (!livePicks) return null;
     if (!results) return { current: 0 };
-    return { current: scoreBracket(livePicks, results.picks).total };
-  }, [livePicks, results]);
+    const s = scoreBracket(livePicks, results.picks);
+    // Knockout pools score the bracket only — the group + 3rd-place sections
+    // are the actual results (identical for everyone), so they don't count.
+    return { current: knockoutOnly ? s.knockoutTotal : s.total };
+  }, [livePicks, results, knockoutOnly]);
 
   if (error)
     return <div className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</div>;
@@ -164,11 +196,12 @@ export function BracketEdit() {
     const submittedDate = bracket.finalizedAt
       ? new Date(bracket.finalizedAt).toLocaleString()
       : null;
-    const locked = isPastDeadline();
+    const locked = isPastDeadline(deadline);
     return (
       <BracketViewer
         picks={bracket.picks}
         results={results?.picks ?? null}
+        knockoutOnly={knockoutOnly}
         header={
           <header className="space-y-2">
             <PoolChip poolId={pool.id} poolName={pool.name} />
@@ -185,7 +218,9 @@ export function BracketEdit() {
             </p>
             {locked && (
               <p className="text-xs text-muted">
-                Bracket locked at {formatDeadline()} (the day before the first WC 2026 game).
+                {knockoutOnly
+                  ? `Bracket locked at ${formatDeadline(deadline)} (an hour before the first knockout match).`
+                  : `Bracket locked at ${formatDeadline(deadline)} (the day before the first WC 2026 game).`}
               </p>
             )}
           </header>
@@ -198,6 +233,7 @@ export function BracketEdit() {
     <>
       <BracketEditor
         results={results?.picks ?? null}
+        knockoutOnly={knockoutOnly}
         header={
           <header className="space-y-3">
             <PoolChip poolId={pool.id} poolName={pool.name} />
@@ -211,7 +247,7 @@ export function BracketEdit() {
           </header>
         }
       />
-      <FinalizeBar />
+      <FinalizeBar knockoutOnly={knockoutOnly} deadline={deadline} />
     </>
   );
 }

@@ -10,21 +10,41 @@ function toPool(id: string, data: Record<string, unknown>): Pool {
     passwordHash: data.passwordHash as string,
     passwordSalt: data.passwordSalt as string,
     createdAt: data.createdAt as number,
+    mode: (data.mode as Pool['mode']) ?? 'full',
+    submitDeadline: (data.submitDeadline as number | undefined) ?? undefined,
   };
 }
 
-export async function createPool(name: string, password: string): Promise<Pool> {
+// `opts` lets a caller create a knockout-only pool: { mode: 'knockout',
+// submitDeadline: KNOCKOUT_SUBMIT_DEADLINE }. Omitted = a normal full pool.
+export async function createPool(
+  name: string,
+  password: string,
+  opts?: { mode?: 'full' | 'knockout'; submitDeadline?: number },
+): Promise<Pool> {
   const { db } = getFirebase();
   const salt = generateSaltB64();
   const hash = await hashWithSalt(password, salt);
   const createdAt = Date.now();
+  const extra: { mode?: 'knockout'; submitDeadline?: number } = {};
+  if (opts?.mode === 'knockout') extra.mode = 'knockout';
+  if (opts?.submitDeadline != null) extra.submitDeadline = opts.submitDeadline;
   const ref = await addDoc(collection(db, 'pools'), {
     name,
     passwordHash: hash,
     passwordSalt: salt,
     createdAt,
+    ...extra,
   });
-  return { id: ref.id, name, passwordHash: hash, passwordSalt: salt, createdAt };
+  return {
+    id: ref.id,
+    name,
+    passwordHash: hash,
+    passwordSalt: salt,
+    createdAt,
+    mode: opts?.mode ?? 'full',
+    submitDeadline: opts?.submitDeadline,
+  };
 }
 
 export async function getPool(poolId: string): Promise<Pool | null> {

@@ -1,11 +1,18 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { isFirebaseConfigured } from '@/lib/firebase';
-import { formatDeadline, isPastDeadline } from '@/lib/deadline';
+import {
+  formatDeadline,
+  isPastDeadline,
+  KNOCKOUT_SUBMIT_DEADLINE,
+  SUBMIT_DEADLINE,
+} from '@/lib/deadline';
 import { createPool } from '@/lib/poolApi';
 import { createBracket } from '@/lib/bracketApi';
+import { emptyResultsPicks, readResults } from '@/lib/resultsApi';
 import { isSignedIn, signInWithGoogle, useAuthStore } from '@/store/authStore';
-import { initialPicks, useBracketStore } from '@/store/bracketStore';
+import { initialPicks, knockoutSeedPicks, useBracketStore } from '@/store/bracketStore';
+import type { BracketPicks } from '@/lib/types';
 
 export function PoolNew() {
   const navigate = useNavigate();
@@ -18,6 +25,16 @@ export function PoolNew() {
   const [creatorName, setCreatorName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Full pools predict everything and close the night before the tournament.
+  // Once that deadline passes, the group stage is underway, so new pools are
+  // knockout-only: members pick just the bracket (Round of 32 → Final) and
+  // have until 1 hour before the first R32 match. After the knockout deadline
+  // too, nothing new can be created.
+  const fullOpen = !isPastDeadline(SUBMIT_DEADLINE);
+  const knockoutMode = !fullOpen && !isPastDeadline(KNOCKOUT_SUBMIT_DEADLINE);
+  const deadline = fullOpen ? SUBMIT_DEADLINE : KNOCKOUT_SUBMIT_DEADLINE;
+  const allClosed = !fullOpen && !knockoutMode;
 
   // Prefill the display name from the Google account once, then leave it
   // editable (people may want a different name in the pool).
@@ -47,8 +64,8 @@ export function PoolNew() {
       setError('Firebase is not configured. See README.');
       return;
     }
-    if (isPastDeadline()) {
-      setError(`Bracket submissions closed at ${formatDeadline()}.`);
+    if (isPastDeadline(deadline)) {
+      setError(`Bracket submissions closed at ${formatDeadline(deadline)}.`);
       return;
     }
     if (!signedIn || !user) {
@@ -59,10 +76,24 @@ export function PoolNew() {
     setBusy(true);
     setError(null);
     try {
-      const pool = await createPool(poolName.trim(), password);
+      const pool = await createPool(
+        poolName.trim(),
+        password,
+        knockoutMode
+          ? { mode: 'knockout', submitDeadline: KNOCKOUT_SUBMIT_DEADLINE }
+          : undefined,
+      );
       // A new pool starts with a fresh bracket — don't seed it with picks
-      // that happen to be in the persisted store from another pool.
-      const picks = initialPicks();
+      // that happen to be in the persisted store from another pool. A knockout
+      // pool seeds the (locked) group + 3rd-place sections from the live
+      // results so the bracket resolves to the real qualified teams.
+      let picks: BracketPicks;
+      if (knockoutMode) {
+        const res = await readResults();
+        picks = knockoutSeedPicks(res?.picks ?? emptyResultsPicks());
+      } else {
+        picks = initialPicks();
+      }
       const bracket = await createBracket({
         poolId: pool.id,
         poolName: pool.name,
@@ -78,15 +109,15 @@ export function PoolNew() {
     }
   };
 
-  if (isPastDeadline()) {
+  if (allClosed) {
     return (
       <div className="mx-auto max-w-md">
         <h1 className="mb-1 text-2xl font-semibold">Create a pool</h1>
         <div className="mt-4 rounded-md border border-warn/40 bg-warn/10 px-4 py-3 text-sm text-warn">
           <p className="font-semibold">Bracket submissions are closed.</p>
           <p className="mt-1 text-warn/80">
-            The deadline was {formatDeadline()}. New pools can't be created until
-            the next tournament.
+            The deadline was {formatDeadline(KNOCKOUT_SUBMIT_DEADLINE)}. New pools
+            can't be created until the next tournament.
           </p>
           <Link
             to="/"
@@ -101,10 +132,24 @@ export function PoolNew() {
 
   return (
     <div className="mx-auto max-w-md">
-      <h1 className="mb-1 text-2xl font-semibold">Create a pool</h1>
+      <h1 className="mb-1 text-2xl font-semibold">
+        {knockoutMode ? 'Create a knockout pool' : 'Create a pool'}
+      </h1>
       <p className="mb-6 text-sm text-muted">
-        You'll get a shareable link. Anyone with the link + password can submit a bracket.
+        {knockoutMode
+          ? 'The group stage is decided — members predict just the knockout bracket (Round of 32 → Final). You’ll get a shareable link.'
+          : "You'll get a shareable link. Anyone with the link + password can submit a bracket."}
       </p>
+
+      {knockoutMode && (
+        <div className="mb-6 rounded-md border border-accent-2/40 bg-accent-2/10 px-4 py-3 text-sm text-accent-2">
+          <p className="font-semibold">🏆 Knockout-only pool</p>
+          <p className="mt-1 text-accent-2/80">
+            The Round of 32 is locked to the actual group-stage results. Picks lock{' '}
+            {formatDeadline(KNOCKOUT_SUBMIT_DEADLINE)}, an hour before the first match.
+          </p>
+        </div>
+      )}
 
       <form onSubmit={onSubmit} className="space-y-5">
         <Field label="Pool name">
@@ -159,7 +204,11 @@ export function PoolNew() {
               disabled={busy}
               className="w-full rounded-md bg-accent py-2.5 text-sm font-semibold text-bg transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {busy ? 'Creating…' : 'Create pool & start bracket'}
+              {busy
+                ? 'Creating…'
+                : knockoutMode
+                  ? 'Create knockout pool & start bracket'
+                  : 'Create pool & start bracket'}
             </button>
           </>
         ) : (

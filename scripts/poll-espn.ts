@@ -333,9 +333,12 @@ function poll(
   const { groupsUpdated, groupsSkipped } = mergeGroupStandings(next, byGroup, overrides);
 
   // 2. Best-3 advancers (only when all 72 group matches done, and admin
-  // hasn't set them).
+  // hasn't set them). The 'thirdPlace' override lets the admin pin the 8
+  // advancers by hand so the poller never recomputes them (the empty-check
+  // alone already protects a non-empty hand-set list; the override also
+  // lets the admin intentionally pin an empty/partial list).
   let thirdPlaceWritten = false;
-  if (next.thirdPlace.advancingGroups.length === 0) {
+  if (!overrides['thirdPlace'] && next.thirdPlace.advancingGroups.length === 0) {
     const computed = computeBest3Advancers(events);
     if (computed.length === 8) {
       next.thirdPlace.advancingGroups = computed;
