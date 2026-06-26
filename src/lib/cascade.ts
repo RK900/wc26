@@ -1,5 +1,5 @@
 import { MATCHES } from '@/data/bracket';
-import { resolveSlot } from '@/lib/resolveBracket';
+import { resolveMatchSides } from '@/lib/resolveBracket';
 import { mapThirdPlaceAdvancers } from '@/lib/thirdPlaceMap';
 import type { BracketPicks } from '@/lib/types';
 
@@ -20,8 +20,7 @@ export function applyCascade(picks: BracketPicks): BracketPicks {
   const mapping = mapThirdPlaceAdvancers(next.thirdPlace.advancingGroups);
 
   for (const m of MATCHES) {
-    const home = resolveSlot(m.home, next, mapping);
-    const away = resolveSlot(m.away, next, mapping);
+    const { home, away } = resolveMatchSides(m, next, mapping);
     const pick = next.knockout[m.id]?.winner ?? null;
     if (pick !== null && pick !== home && pick !== away) {
       next.knockout[m.id] = { winner: null };

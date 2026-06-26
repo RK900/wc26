@@ -2,7 +2,7 @@ import { MATCHES, MATCHES_BY_ROUND } from '@/data/bracket';
 import { GROUP_LETTERS } from '@/data/groups';
 import { TEAM_CODES } from '@/data/teams';
 import { groupRowCorrectness } from '@/lib/correctness';
-import { resolveSlot } from '@/lib/resolveBracket';
+import { resolveMatchSides } from '@/lib/resolveBracket';
 import { mapThirdPlaceAdvancers } from '@/lib/thirdPlaceMap';
 import type { BracketPicks, GroupLetter, Round, TeamCode } from '@/lib/types';
 
@@ -146,8 +146,7 @@ export function computeAliveTeams(results: BracketPicks): Set<TeamCode> {
   for (const m of MATCHES) {
     const winner = results.knockout[m.id]?.winner;
     if (!winner) continue;
-    const home = resolveSlot(m.home, results, mapping);
-    const away = resolveSlot(m.away, results, mapping);
+    const { home, away } = resolveMatchSides(m, results, mapping);
     if (home && home !== winner) alive.delete(home);
     if (away && away !== winner) alive.delete(away);
   }

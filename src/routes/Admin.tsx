@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { type User } from 'firebase/auth';
 import { BEST3_SLOT_MATCH_IDS, MATCHES_BY_ROUND } from '@/data/bracket';
 import { GROUPS, GROUP_BY_LETTER, GROUP_LETTERS } from '@/data/groups';
-import { TEAMS } from '@/data/teams';
+import { TEAM_CODES, TEAMS } from '@/data/teams';
 import {
   isAdminUser,
   signInAsAdmin,
@@ -12,7 +12,7 @@ import {
 } from '@/lib/adminAuth';
 import { applyCascade } from '@/lib/cascade';
 import { isFirebaseConfigured } from '@/lib/firebaseConfigured';
-import { resolveSlot } from '@/lib/resolveBracket';
+import { resolveMatchSides, resolveSlot } from '@/lib/resolveBracket';
 import { emptyResultsPicks, readResults, writeResults } from '@/lib/resultsApi';
 import { mapThirdPlaceAdvancers } from '@/lib/thirdPlaceMap';
 import type {
@@ -340,6 +340,13 @@ function AdminDashboard({ user }: DashboardProps) {
         />
       </Section>
 
+      <Section
+        title="Round of 32 teams (manual override)"
+        subtitle="Set R32 matchups directly. Anything chosen here overrides the team derived from the standings above (and the poller never touches it) — useful to lock a known fixture before every group is final. Leave a slot on “Auto” to keep it derived. This is the field that seeds knockout pools."
+      >
+        <R32Override picks={picks} onChange={update} />
+      </Section>
+
       <Section title="Knockout winners">
         <KnockoutWinners picks={picks} onChange={update} />
       </Section>
@@ -525,6 +532,92 @@ function ThirdPlaceSelector({
   );
 }
 
+function R32Override({
+  picks,
+  onChange,
+}: {
+  picks: BracketPicks;
+  onChange: (picks: BracketPicks) => void;
+}) {
+  const mapping = useMemo(
+    () => mapThirdPlaceAdvancers(picks.thirdPlace.advancingGroups),
+    [picks.thirdPlace.advancingGroups],
+  );
+
+  const setSide = (matchId: number, side: 'home' | 'away', team: TeamCode | null) => {
+    const cur = picks.r32 ?? {};
+    const prev = cur[matchId] ?? { home: null, away: null };
+    const entry = { ...prev, [side]: team };
+    const next = { ...cur, [matchId]: entry };
+    // Drop a fully-Auto entry so the doc stays clean; keep {} (not undefined)
+    // when empty so Firestore accepts the write.
+    if (entry.home === null && entry.away === null) delete next[matchId];
+    onChange({ ...picks, r32: next });
+  };
+
+  return (
+    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      {MATCHES_BY_ROUND.R32.map((m) => {
+        const derivedHome = resolveSlot(m.home, picks, mapping);
+        const derivedAway = resolveSlot(m.away, picks, mapping);
+        const ov = picks.r32?.[m.id];
+        const set = (ov?.home ?? null) !== null || (ov?.away ?? null) !== null;
+        return (
+          <div
+            key={m.id}
+            className={`rounded-md border bg-surface p-3 ${set ? 'border-accent/50' : 'border-border'}`}
+          >
+            <div className="mb-2 text-xs text-muted">M{m.id}</div>
+            <TeamSelect
+              value={ov?.home ?? null}
+              derived={derivedHome}
+              onChange={(t) => setSide(m.id, 'home', t)}
+            />
+            <div className="my-1 text-center text-[10px] uppercase tracking-wider text-muted">
+              vs
+            </div>
+            <TeamSelect
+              value={ov?.away ?? null}
+              derived={derivedAway}
+              onChange={(t) => setSide(m.id, 'away', t)}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TeamSelect({
+  value,
+  derived,
+  onChange,
+}: {
+  value: TeamCode | null;
+  derived: TeamCode | null;
+  onChange: (team: TeamCode | null) => void;
+}) {
+  const overridden = value !== null;
+  return (
+    <select
+      value={value ?? ''}
+      onChange={(e) => onChange(e.target.value || null)}
+      className={`w-full rounded-md border bg-surface-2 px-2 py-1.5 text-sm ${
+        overridden ? 'border-accent/60 text-text' : 'border-border text-muted'
+      }`}
+    >
+      <option value="">
+        {derived ? `Auto — ${teamLabel(derived)}` : 'Auto — (undetermined)'}
+      </option>
+      {TEAM_CODES.map((code) => (
+        <option key={code} value={code}>
+          {teamLabel(code)}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 function KnockoutWinners({
   picks,
   onChange,
@@ -555,8 +648,7 @@ function KnockoutWinners({
             <h3 className="mb-2 text-sm font-semibold text-muted">{label}</h3>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {matches.map((m) => {
-                const home = resolveSlot(m.home, picks, mapping);
-                const away = resolveSlot(m.away, picks, mapping);
+                const { home, away } = resolveMatchSides(m, picks, mapping);
                 const winner = picks.knockout[m.id]?.winner ?? null;
                 const setWinner = (w: TeamCode | null) => {
                   onChange({

@@ -56,6 +56,11 @@ export interface BracketPicks {
   // shootout goals). Used as the leaderboard tiebreaker. Same field holds
   // the user's prediction in their picks and the actual count in results.
   finalGoalsGuess?: number | null;
+  // Optional admin override of who occupies each Round-of-32 slot, keyed by
+  // R32 match id. A non-null home/away takes precedence over the team derived
+  // from group standings; null/absent falls through to the derived team. Set
+  // on the results doc and copied into knockout-pool brackets at seed time.
+  r32?: Record<MatchId, { home: TeamCode | null; away: TeamCode | null }>;
 }
 
 // Persisted documents (Firestore)

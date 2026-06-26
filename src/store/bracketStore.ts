@@ -59,6 +59,10 @@ export const knockoutSeedPicks = (resultsPicks: BracketPicks): BracketPicks => (
   knockout: {},
   finalizedAt: null,
   finalGoalsGuess: null,
+  // Carry any admin R32 override so the seeded bracket resolves to the exact
+  // teams the admin set. Omit the key entirely when absent (Firestore rejects
+  // undefined fields).
+  ...(resultsPicks.r32 ? { r32: structuredClone(resultsPicks.r32) } : {}),
 });
 
 interface BracketState {
@@ -145,6 +149,9 @@ export const useBracketStore = create<BracketState>()(
             ...state.picks,
             groups: groupsFromResults(resultsPicks),
             thirdPlace: { advancingGroups: [...resultsPicks.thirdPlace.advancingGroups] },
+            // Mirror the admin R32 override (or {} when none — never undefined,
+            // which Firestore would reject on the next autosave).
+            r32: resultsPicks.r32 ?? {},
           }),
         })),
 

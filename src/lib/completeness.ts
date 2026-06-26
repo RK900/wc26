@@ -1,6 +1,6 @@
 import { MATCHES } from '@/data/bracket';
 import { GROUP_LETTERS } from '@/data/groups';
-import { resolveSlot } from '@/lib/resolveBracket';
+import { resolveMatchSides } from '@/lib/resolveBracket';
 import { mapThirdPlaceAdvancers } from '@/lib/thirdPlaceMap';
 import type { BracketPicks } from '@/lib/types';
 
@@ -15,8 +15,7 @@ export function isComplete(picks: BracketPicks): boolean {
   for (const m of MATCHES) {
     const winner = picks.knockout[m.id]?.winner;
     if (!winner) return false;
-    const home = resolveSlot(m.home, picks, mapping);
-    const away = resolveSlot(m.away, picks, mapping);
+    const { home, away } = resolveMatchSides(m, picks, mapping);
     if (winner !== home && winner !== away) return false;
   }
   return true;
@@ -47,8 +46,7 @@ export function progress(picks: BracketPicks): CompletionProgress {
   for (const m of MATCHES) {
     const winner = picks.knockout[m.id]?.winner;
     if (!winner) continue;
-    const home = resolveSlot(m.home, picks, mapping);
-    const away = resolveSlot(m.away, picks, mapping);
+    const { home, away } = resolveMatchSides(m, picks, mapping);
     if (winner === home || winner === away) knockoutPicks++;
   }
 

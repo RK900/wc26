@@ -28,7 +28,7 @@ import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import { MATCHES } from '../src/data/bracket';
 import { GROUP_BY_LETTER, GROUP_LETTERS, GROUPS } from '../src/data/groups';
 import { mapThirdPlaceAdvancers } from '../src/lib/thirdPlaceMap';
-import { resolveSlot } from '../src/lib/resolveBracket';
+import { resolveMatchSides } from '../src/lib/resolveBracket';
 import { mergeGroupStandings } from './pollGroups';
 import type {
   BracketPicks,
@@ -262,8 +262,7 @@ function pollKnockoutWinners(
     if (picks.knockout[m.id]?.winner) continue;
 
     const mapping = mapThirdPlaceAdvancers(picks.thirdPlace.advancingGroups);
-    const expectedHome = resolveSlot(m.home, picks, mapping);
-    const expectedAway = resolveSlot(m.away, picks, mapping);
+    const { home: expectedHome, away: expectedAway } = resolveMatchSides(m, picks, mapping);
     if (!expectedHome || !expectedAway) {
       skipped.push({
         matchId: m.id,
