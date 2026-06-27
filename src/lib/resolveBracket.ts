@@ -51,6 +51,23 @@ export function resolveSlot(
   }
 }
 
+// Sentinel for an R32 override side meaning "force this slot blank" — i.e.
+// render its placeholder ("1st of H") rather than the team derived from the
+// (possibly provisional) standings. Distinct from null/absent, which means
+// "derive it". No FIFA team code collides with this value.
+export const R32_OPEN = '__open__';
+
+function resolveOverrideSide(
+  override: TeamCode | null | undefined,
+  spec: SlotSpec,
+  picks: BracketPicks,
+  mapping: ThirdPlaceMapping,
+): TeamCode | null {
+  if (override == null) return resolveSlot(spec, picks, mapping); // auto / derived
+  if (override === R32_OPEN) return null; // forced open -> placeholder
+  return override; // explicit team
+}
+
 // Resolve a match's two sides, honoring an optional admin R32 override
 // (picks.r32[matchId]) before falling back to the slot-derived team. Use this
 // everywhere a match's home/away is needed — editor, scoring, cascade,
@@ -64,8 +81,8 @@ export function resolveMatchSides(
 ): { home: TeamCode | null; away: TeamCode | null } {
   const ov = picks.r32?.[m.id];
   return {
-    home: ov?.home ?? resolveSlot(m.home, picks, mapping),
-    away: ov?.away ?? resolveSlot(m.away, picks, mapping),
+    home: resolveOverrideSide(ov?.home, m.home, picks, mapping),
+    away: resolveOverrideSide(ov?.away, m.away, picks, mapping),
   };
 }
 

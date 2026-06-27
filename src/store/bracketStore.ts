@@ -35,15 +35,17 @@ export const initialPicks = (): BracketPicks => ({
   finalGoalsGuess: null,
 });
 
-// Copy the group standings out of a results doc into a fresh picks.groups,
-// marking each committed (the group stage is decided — these aren't editable).
+// Copy the group standings out of a results doc into a fresh picks.groups.
+// Preserve each group's `committed` flag — a group that isn't final yet
+// (committed === false) resolves its R32 slots to a placeholder ("1st of H")
+// instead of a provisional team, so members don't see half-decided groups.
 function groupsFromResults(resultsPicks: BracketPicks): Record<GroupLetter, GroupPick> {
   const out = {} as Record<GroupLetter, GroupPick>;
   for (const letter of GROUP_LETTERS) {
     const gp = resultsPicks.groups[letter];
     out[letter] = {
       order: (gp ? [...gp.order] : [null, null, null, null]) as GroupOrder,
-      committed: true,
+      committed: gp?.committed ?? false,
     };
   }
   return out;

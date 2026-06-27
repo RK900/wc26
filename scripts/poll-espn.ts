@@ -327,17 +327,25 @@ function poll(
 } {
   const next = structuredClone(picks);
 
-  // 1. Group standings (live partial during group stage).
-  const { byGroup } = computeGroupStandings(events);
-  const { groupsUpdated, groupsSkipped } = mergeGroupStandings(next, byGroup, overrides);
+  // 1. Group standings (live partial during group stage). committed tracks
+  // completeness so incomplete groups render as placeholders, not provisional
+  // teams.
+  const { byGroup, byGroupComplete } = computeGroupStandings(events);
+  const { groupsUpdated, groupsSkipped } = mergeGroupStandings(
+    next,
+    byGroup,
+    byGroupComplete,
+    overrides,
+  );
 
-  // 2. Best-3 advancers (only when all 72 group matches done, and admin
-  // hasn't set them). The 'thirdPlace' override lets the admin pin the 8
-  // advancers by hand so the poller never recomputes them (the empty-check
-  // alone already protects a non-empty hand-set list; the override also
-  // lets the admin intentionally pin an empty/partial list).
+  // 2. Best-3 advancers. Recompute unless the admin pinned them ('thirdPlace'
+  // override) or a valid set of exactly 8 is already stored. Keying on "!= 8"
+  // rather than "is empty" means a stray partial selection (e.g. a hand-saved
+  // 4) self-heals once the group stage completes instead of wedging the poller
+  // forever. computeBest3Advancers returns [] until all 72 group matches are
+  // done, so nothing is written before the field is determinate.
   let thirdPlaceWritten = false;
-  if (!overrides['thirdPlace'] && next.thirdPlace.advancingGroups.length === 0) {
+  if (!overrides['thirdPlace'] && next.thirdPlace.advancingGroups.length !== 8) {
     const computed = computeBest3Advancers(events);
     if (computed.length === 8) {
       next.thirdPlace.advancingGroups = computed;

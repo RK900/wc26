@@ -11,16 +11,23 @@ export function groupOrdersEqual(a: GroupOrder, b: GroupOrder): boolean {
 // Overwrite each group's stored standings with the freshly computed ones, so
 // the leaderboard keeps re-ranking live through matchdays 2 and 3. A group is
 // left alone only if the admin has pinned it via manualOverrides ('groups.A').
-// Groups with no ESPN data yet, or whose standings are unchanged, are skipped.
+// Groups with no ESPN data yet, or whose standings AND committed flag are
+// unchanged, are skipped.
+//
+// `complete[letter]` is whether that group has played all its matches. It
+// becomes the group's `committed` flag: a not-yet-complete group is stored
+// uncommitted, so its knockout slots render as a placeholder ("1st of H")
+// instead of a provisional standing. The order still updates live (the
+// leaderboard re-ranks off the order, not the flag).
 //
 // This previously skipped any group whose stored order was already non-null —
 // which also caught the poller's OWN earlier writes, freezing every group at
-// its first computed standings (e.g. group A stuck with KOR/CZE in alphabetical
-// order from after match 1). manualOverrides is the intended, explicit way to
-// protect a hand-entered group from being overwritten.
+// its first computed standings. manualOverrides is the intended, explicit way
+// to protect a hand-entered group from being overwritten.
 export function mergeGroupStandings(
   picks: BracketPicks,
   computed: Record<GroupLetter, GroupOrder>,
+  complete: Record<GroupLetter, boolean>,
   overrides: Record<string, true>,
 ): { groupsUpdated: GroupLetter[]; groupsSkipped: GroupLetter[] } {
   const updated: GroupLetter[] = [];
@@ -34,10 +41,14 @@ export function mergeGroupStandings(
     if (computedOrder.every((c) => c === null)) {
       continue; // no group-stage data yet
     }
-    if (groupOrdersEqual(picks.groups[letter].order, computedOrder)) {
+    const committed = complete[letter] ?? false;
+    if (
+      groupOrdersEqual(picks.groups[letter].order, computedOrder) &&
+      picks.groups[letter].committed === committed
+    ) {
       continue; // already current — avoid a no-op write
     }
-    picks.groups[letter] = { order: computedOrder, committed: true };
+    picks.groups[letter] = { order: computedOrder, committed };
     updated.push(letter);
   }
   return { groupsUpdated: updated, groupsSkipped: skipped };

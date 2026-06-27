@@ -24,7 +24,7 @@ describe('mergeGroupStandings', () => {
     const computed = emptyComputed();
     computed.A = ['MEX', 'KOR', 'CZE', 'RSA']; // correct order after both matches
 
-    const res = mergeGroupStandings(picks, computed, {});
+    const res = mergeGroupStandings(picks, computed, { A: true }, {});
 
     expect(res.groupsUpdated).toContain('A');
     expect(picks.groups.A.order).toEqual(['MEX', 'KOR', 'CZE', 'RSA']);
@@ -35,7 +35,7 @@ describe('mergeGroupStandings', () => {
     const computed = emptyComputed();
     computed.B = ['SUI', 'CAN', 'BIH', 'QAT'];
 
-    const res = mergeGroupStandings(picks, computed, {});
+    const res = mergeGroupStandings(picks, computed, { B: true }, {});
 
     expect(res.groupsUpdated).toEqual(['B']);
     expect(picks.groups.B).toEqual({ order: ['SUI', 'CAN', 'BIH', 'QAT'], committed: true });
@@ -47,7 +47,7 @@ describe('mergeGroupStandings', () => {
     const computed = emptyComputed();
     computed.A = ['MEX', 'KOR', 'CZE', 'RSA'];
 
-    const res = mergeGroupStandings(picks, computed, { 'groups.A': true });
+    const res = mergeGroupStandings(picks, computed, { A: true }, { 'groups.A': true });
 
     expect(res.groupsSkipped).toContain('A');
     expect(res.groupsUpdated).not.toContain('A');
@@ -60,14 +60,30 @@ describe('mergeGroupStandings', () => {
     const computed = emptyComputed();
     computed.C = ['BRA', 'MAR', 'SCO', 'HAI'];
 
-    const res = mergeGroupStandings(picks, computed, {});
+    const res = mergeGroupStandings(picks, computed, { C: true }, {});
 
     expect(res.groupsUpdated).not.toContain('C');
   });
 
   it('skips groups with no computed data', () => {
-    const res = mergeGroupStandings(emptyPicks(), emptyComputed(), {});
+    const res = mergeGroupStandings(emptyPicks(), emptyComputed(), {}, {});
     expect(res.groupsUpdated).toEqual([]);
+  });
+
+  it('stores a group uncommitted until it is complete', () => {
+    const picks = emptyPicks();
+    const computed = emptyComputed();
+    computed.D = ['USA', 'AUS', 'PAR', 'TUR'];
+
+    // Group still in progress -> uncommitted (its KO slots show a placeholder).
+    mergeGroupStandings(picks, computed, { D: false }, {});
+    expect(picks.groups.D.committed).toBe(false);
+    expect(picks.groups.D.order).toEqual(['USA', 'AUS', 'PAR', 'TUR']);
+
+    // Group finishes -> committed flips even though the order is unchanged.
+    const res = mergeGroupStandings(picks, computed, { D: true }, {});
+    expect(res.groupsUpdated).toContain('D');
+    expect(picks.groups.D.committed).toBe(true);
   });
 });
 

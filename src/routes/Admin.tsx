@@ -12,7 +12,7 @@ import {
 } from '@/lib/adminAuth';
 import { applyCascade } from '@/lib/cascade';
 import { isFirebaseConfigured } from '@/lib/firebaseConfigured';
-import { resolveMatchSides, resolveSlot } from '@/lib/resolveBracket';
+import { R32_OPEN, resolveMatchSides, resolveSlot } from '@/lib/resolveBracket';
 import { emptyResultsPicks, readResults, writeResults } from '@/lib/resultsApi';
 import { mapThirdPlaceAdvancers } from '@/lib/thirdPlaceMap';
 import type {
@@ -609,6 +609,7 @@ function TeamSelect({
       <option value="">
         {derived ? `Auto — ${teamLabel(derived)}` : 'Auto — (undetermined)'}
       </option>
+      <option value={R32_OPEN}>Open — show placeholder</option>
       {TEAM_CODES.map((code) => (
         <option key={code} value={code}>
           {teamLabel(code)}
