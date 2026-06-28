@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ensureSignedIn, isFirebaseConfigured } from '@/lib/firebase';
-import { formatDeadline, isPastDeadline, SUBMIT_DEADLINE } from '@/lib/deadline';
+import { formatDeadline, isPastDeadline, poolDeadline } from '@/lib/deadline';
 import { getPool, verifyPoolPassword } from '@/lib/poolApi';
 import { createBracket, getBracket } from '@/lib/bracketApi';
 import { emptyResultsPicks, readResults } from '@/lib/resultsApi';
@@ -82,7 +82,7 @@ export function PoolJoin() {
   if (!pool || !poolId) return null;
 
   const knockoutMode = pool.mode === 'knockout';
-  const deadline = pool.submitDeadline ?? SUBMIT_DEADLINE;
+  const deadline = poolDeadline(pool);
 
   if (isPastDeadline(deadline)) {
     return (

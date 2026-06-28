@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { isPastDeadline, KNOCKOUT_SUBMIT_DEADLINE, SUBMIT_DEADLINE } from './deadline';
+import {
+  isPastDeadline,
+  KNOCKOUT_SUBMIT_DEADLINE,
+  poolDeadline,
+  SUBMIT_DEADLINE,
+} from './deadline';
 
 describe('SUBMIT_DEADLINE', () => {
   // Hard-coded equivalence against the same instant the Firestore rule
@@ -11,14 +16,28 @@ describe('SUBMIT_DEADLINE', () => {
 });
 
 describe('KNOCKOUT_SUBMIT_DEADLINE', () => {
-  // 11:00 AM PDT on Sun Jun 28, 2026 = 18:00 UTC, 1 hour before the first
-  // Round-of-32 match. Knockout pools store this as Pool.submitDeadline.
-  it('is 2026-06-28 18:00 UTC (11:00 AM PDT on Jun 28)', () => {
-    expect(KNOCKOUT_SUBMIT_DEADLINE).toBe(Date.parse('2026-06-28T18:00:00Z'));
+  // 10:00 AM PDT on Mon Jun 29, 2026 = 17:00 UTC. Mirrors the
+  // knockoutSubmitDeadlineMs rule in firestore.rules — if either side moves,
+  // this test breaks so a human confirms both moved.
+  it('is 2026-06-29 17:00 UTC (10:00 AM PDT on Jun 29)', () => {
+    expect(KNOCKOUT_SUBMIT_DEADLINE).toBe(Date.parse('2026-06-29T17:00:00Z'));
   });
 
   it('is after the full-tournament deadline', () => {
     expect(KNOCKOUT_SUBMIT_DEADLINE).toBeGreaterThan(SUBMIT_DEADLINE);
+  });
+});
+
+describe('poolDeadline', () => {
+  it('uses the global knockout deadline for knockout pools, ignoring any stored submitDeadline', () => {
+    expect(poolDeadline({ mode: 'knockout', submitDeadline: 123 })).toBe(
+      KNOCKOUT_SUBMIT_DEADLINE,
+    );
+  });
+
+  it('uses the full-tournament deadline for full pools and when unknown', () => {
+    expect(poolDeadline({ mode: 'full' })).toBe(SUBMIT_DEADLINE);
+    expect(poolDeadline(null)).toBe(SUBMIT_DEADLINE);
   });
 });
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ensureSignedIn, isFirebaseConfigured } from '@/lib/firebase';
-import { formatDeadline, isPastDeadline, SUBMIT_DEADLINE } from '@/lib/deadline';
+import { formatDeadline, isPastDeadline, poolDeadline } from '@/lib/deadline';
 import { subscribeToPoolBracketsFull } from '@/lib/bracketApi';
 import { isAIBracketId } from '@/lib/aiBracket';
 import { getPool } from '@/lib/poolApi';
@@ -58,7 +58,7 @@ export function PoolView() {
   }, [poolId]);
 
   const knockoutOnly = pool?.mode === 'knockout';
-  const deadline = pool?.submitDeadline ?? SUBMIT_DEADLINE;
+  const deadline = poolDeadline(pool);
 
   const rows: LeaderboardRow[] = useMemo(() => {
     const scoreOf = (b: Bracket): number | null => {

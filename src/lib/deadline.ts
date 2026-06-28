@@ -4,10 +4,13 @@
 // 11:59 PM PDT = 06:59 UTC on 2026-06-11.
 export const SUBMIT_DEADLINE = Date.parse('2026-06-10T23:59:00-07:00');
 
-// Knockout-only pools open after the group stage and lock 1 hour before the
-// first Round-of-32 match: 11:00 AM Pacific on Sunday June 28, 2026 (PDT,
-// UTC-7) = 18:00 UTC. Kept in sync with the cap/fallback in firestore.rules.
-export const KNOCKOUT_SUBMIT_DEADLINE = Date.parse('2026-06-28T11:00:00-07:00');
+// Knockout-only pools lock at 10:00 AM Pacific on Monday June 29, 2026 (PDT,
+// UTC-7) = 17:00 UTC. (Extended from the original 11am Jun 28 — a couple of
+// R32 games had already kicked off, which is fine.) This is a GLOBAL deadline
+// for every knockout pool: it's read from this constant (and the matching rule
+// in firestore.rules), NOT from each pool's stored submitDeadline — so it can
+// be changed here without having to mutate already-created (immutable) pools.
+export const KNOCKOUT_SUBMIT_DEADLINE = Date.parse('2026-06-29T10:00:00-07:00');
 
 const DEV_OVERRIDE_KEY = 'dleuworldcup:dev-deadline';
 
@@ -55,6 +58,17 @@ export function isPastDeadline(
   now: number = Date.now(),
 ): boolean {
   return now >= effectiveDeadline(deadline);
+}
+
+// The submission deadline that applies to a given pool. Knockout pools use the
+// global KNOCKOUT_SUBMIT_DEADLINE (so it stays changeable from one place);
+// everything else uses its own submitDeadline if set, else the full-tournament
+// deadline. Mirrors poolSubmitDeadlineMs in firestore.rules.
+export function poolDeadline(
+  pool: { mode?: 'full' | 'knockout'; submitDeadline?: number } | null | undefined,
+): number {
+  if (pool?.mode === 'knockout') return KNOCKOUT_SUBMIT_DEADLINE;
+  return pool?.submitDeadline ?? SUBMIT_DEADLINE;
 }
 
 export function formatDeadline(deadline: number = SUBMIT_DEADLINE): string {

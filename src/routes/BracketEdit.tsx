@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ensureSignedIn, isFirebaseConfigured } from '@/lib/firebase';
 import { getBracket, updateBracketPicks } from '@/lib/bracketApi';
 import { getPool } from '@/lib/poolApi';
-import { formatDeadline, isPastDeadline, SUBMIT_DEADLINE } from '@/lib/deadline';
+import { formatDeadline, isPastDeadline, poolDeadline } from '@/lib/deadline';
 import { subscribeResults } from '@/lib/resultsApi';
 import { scoreBracket } from '@/lib/scoring';
 import { isSignedIn, useAuthStore } from '@/store/authStore';
@@ -41,7 +41,7 @@ export function BracketEdit() {
 
   // Knockout pools carry their own (later) deadline and lock the group +
   // 3rd-place sections. Both fall back to full-pool behavior until pool loads.
-  const deadline = pool?.submitDeadline ?? SUBMIT_DEADLINE;
+  const deadline = poolDeadline(pool);
   const knockoutOnly = pool?.mode === 'knockout';
 
   useEffect(() => {

@@ -20,14 +20,21 @@ service cloud.firestore {
       return (timestamp.date(2026, 6, 11) + duration.value(6, 'h') + duration.value(59, 'm')).toMillis();
     }
 
-    // A pool may carry its own later deadline in `submitDeadline` (epoch ms) —
-    // e.g. a knockout-only pool opened once the group stage is decided. Absent
-    // => the full deadline above. Read from the parent pool doc; the value is
-    // capped at pool-create time (see the pool create rule) so it can't be set
-    // arbitrarily far into the future to bypass the deadline.
+    // Knockout pools lock at 10:00 AM PDT on 2026-06-29 = 17:00 UTC. This is a
+    // GLOBAL deadline keyed on the pool's mode (not its stored submitDeadline),
+    // so it can be changed here without mutating already-created (immutable)
+    // pools. Mirrors KNOCKOUT_SUBMIT_DEADLINE in src/lib/deadline.ts.
+    function knockoutSubmitDeadlineMs() {
+      return (timestamp.date(2026, 6, 29) + duration.value(17, 'h')).toMillis();
+    }
+
+    // A knockout pool (mode == 'knockout') locks at the knockout deadline;
+    // every other pool locks at the full-tournament deadline.
     function poolSubmitDeadlineMs(poolId) {
       let p = get(/databases/$(database)/documents/pools/$(poolId)).data;
-      return ('submitDeadline' in p) ? p.submitDeadline : fullSubmitDeadlineMs();
+      return (('mode' in p) && p.mode == 'knockout')
+             ? knockoutSubmitDeadlineMs()
+             : fullSubmitDeadlineMs();
     }
 
     function beforeSubmitDeadline(poolId) {
